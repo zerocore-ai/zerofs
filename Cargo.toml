@@ -1,0 +1,12 @@
+[workspace]
+members = [
+    "zerofs",
+    "zerofs-cli",
+    "zerofs-fuse",
+]
+
+[workspace.package]
+edition = "2018"
+version = "0.1.0"
+repository = "https://github.com/zerocore-ai/zeroengine"
+authors = ["Stephen Akinyemi <appcypher@outlook.com>"]
