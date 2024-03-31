@@ -1,9 +1,9 @@
 [package]
-name = "zerofs-fuse"
+name = "wasi_filesystem_client"
 version.workspace = true
-edition.workspace = true
-repository.workspace = true
 license.workspace = true
+repository.workspace = true
 authors.workspace = true
+edition.workspace = true
 
 [dependencies]

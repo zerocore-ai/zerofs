@@ -3,6 +3,14 @@
 version = 3
 
 [[package]]
+name = "wasi_filesystem_client"
+version = "0.1.0"
+
+[[package]]
+name = "wasi_filesystem_host"
+version = "0.1.0"
+
+[[package]]
 name = "zerofs"
 version = "0.1.0"
 
