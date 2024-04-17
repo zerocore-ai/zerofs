@@ -1,11 +1,14 @@
-use crate::Dir;
+use super::Entity;
 
 //--------------------------------------------------------------------------------------------------
 // Types
 //--------------------------------------------------------------------------------------------------
 
-/// A case-insensitive distributed file system.
-pub struct FileSystem {
-    /// The root directory of the file system.
-    pub root: Dir,
+/// A directory in the file system.
+pub struct Dir {
+    /// The name of the directory.
+    pub name: String,
+
+    /// The entries in the directory.
+    pub entries: Vec<Entity>,
 }

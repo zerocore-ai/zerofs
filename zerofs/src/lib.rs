@@ -1,24 +1,25 @@
 #![warn(missing_docs)]
-//! zerofs
+#![allow(clippy::module_inception)]
+//! zerofs is a secure distributed content-addressable file system
 
-mod dir;
-mod entity;
-mod errors;
-mod file;
-mod fs;
-mod metadata;
-mod node;
+mod capability;
+mod client;
+mod config;
+mod error;
+mod filesystem;
+mod service;
 mod store;
+mod utils;
 
 //--------------------------------------------------------------------------------------------------
 // Exports
 //--------------------------------------------------------------------------------------------------
 
-pub use dir::*;
-pub use entity::*;
-pub use errors::*;
-pub use file::*;
-pub use fs::*;
-pub use metadata::*;
-// pub use node::*;
+pub use capability::*;
+pub use client::*;
+pub use config::*;
+pub use error::*;
+pub use filesystem::*;
+pub use service::*;
 pub use store::*;
+pub use utils::*;

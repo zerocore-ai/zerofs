@@ -1,23 +1,19 @@
 [workspace]
-members = [
-    "components/wasi-filesystem/client",
-    "components/wasi-filesystem/host",
-    "zerofs",
-    "zerofs-cli",
-    "zerofs-fuse",
-]
+members = ["zerofs", "zerofs-cli", "zerofs-fuse"]
 
 [workspace.package]
 edition = "2018"
 version = "0.1.0"
-repository = "https://github.com/zerocore-ai/zeroengine"
+repository = "https://github.com/zerocore-ai/zerofs"
 license = "Apache-2.0"
-authors = ["Stephen Akinyemi <appcypher@outlook.com>"]
+authors = ["Stephen Akinyemi <steve@zerocore.ai>"]
 
 [workspace.dependencies]
 async-trait = "0.1.77"
 anyhow = "1.0.79"
+cid = "0.11.1"
 clap = { version = "4.4.8", features = ["derive", "color"] }
+did-key = "0.2.1"
 futures = "0.3.30"
 proptest = "1.4.0"
 serde = { version = "1.0.194", features = ["derive"] }
@@ -29,4 +25,5 @@ toml = "0.8.8"
 tracing = "0.1.40"
 tracing-subscriber = "0.3.17"
 typed-builder = "0.18.0"
+ucan = "0.4.0"
 zerofs = { path = "zerofs" }

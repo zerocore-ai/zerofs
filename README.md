@@ -24,9 +24,21 @@
   </p> -->
 </div>
 
-**`zerofs`** is a secure [multi-tenant][multi_tenant] file system for [distributed][distributed] applications.
+**`zerofs`** is a secure distributed content-addressable file system.
 
-##
+### Key Features
+
+This project shares the same [core philosophies][key-features] as zerocore, and in addition to that, it also has these key features:
+
+#### Content Addressable
+
+Data in zerofs is stored based on its content, using a unique cryptographic hash. This content-addressable storage (CAS) ensures data integrity and immutability, facilitating efficient deduplication and integrity checks.
+
+#### Versioning
+
+zerofs features robust data versioning where each modification creates a new immutable version of the data, linked through hashes. This design allows for full historical traceability and simple rollback capabilities.
+
+</br>
 
 > [!WARNING]
 > This project is in early development and is not yet ready for production use.

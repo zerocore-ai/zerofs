@@ -1,5 +1,6 @@
 [package]
 name = "zerofs"
+description = "zerofs is a secure distributed content-addressable file system"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
@@ -7,5 +8,14 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+cid.workspace = true
+did-key.workspace = true
+structstruck.workspace = true
 thiserror.workspace = true
-uuid = "1.8.0"
+tokio.workspace = true
+typed-builder.workspace = true
+ucan.workspace = true
+shared_memory = "0.12.4"
+bytes = "1.6.0"

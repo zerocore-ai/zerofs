@@ -1,22 +1,15 @@
-use thiserror::Error;
+use std::path::PathBuf;
 
 //--------------------------------------------------------------------------------------------------
 // Types
 //--------------------------------------------------------------------------------------------------
 
-/// The result of a file system operation.
-pub type FsResult<T> = Result<T, FsError>;
-
-/// An error that occurred during a file system operation.
-#[derive(Debug, Error)]
-pub enum FsError {}
-
-//--------------------------------------------------------------------------------------------------
-// Functions
-//--------------------------------------------------------------------------------------------------
-
-/// Creates an `Ok` `FsResult` d.
-#[allow(non_snake_case)]
-pub fn Ok<T>(value: T) -> FsResult<T> {
-    Result::Ok(value)
+/// A block store that stores blocks on disk.
+pub struct DiskBlockStore {
+    /// The base directory where the blocks are stored.
+    _base_dir: PathBuf, // Default ~/.zerofs
 }
+
+//--------------------------------------------------------------------------------------------------
+// Methods
+//--------------------------------------------------------------------------------------------------
