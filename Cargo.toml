@@ -16,7 +16,7 @@ clap = { version = "4.4.8", features = ["derive", "color"] }
 did-key = "0.2.1"
 futures = "0.3.30"
 proptest = "1.4.0"
-serde = { version = "1.0.194", features = ["derive"] }
+serde = { version = "1.0.198", features = ["derive"] }
 structstruck = "0.4.1"
 test-log = { version = "0.2.14", features = ["trace", "tracing-subscriber"] }
 thiserror = "1.0.56"
