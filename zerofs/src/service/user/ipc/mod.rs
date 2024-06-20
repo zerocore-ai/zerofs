@@ -1,11 +1,9 @@
-mod block_store;
-mod disk_block_store;
-mod mem_block_store;
+mod client;
+mod server;
 
 //--------------------------------------------------------------------------------------------------
 // Exports
 //--------------------------------------------------------------------------------------------------
 
-pub use block_store::*;
-pub use disk_block_store::*;
-pub use mem_block_store::*;
+pub use client::*;
+pub use server::*;

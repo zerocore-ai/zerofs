@@ -1,13 +1,9 @@
-#![warn(missing_docs)]
-#![allow(clippy::module_inception)]
-//! zerofs is a secure distributed content-addressable file system
+mod authenticate;
+mod open_at;
 
 //--------------------------------------------------------------------------------------------------
 // Exports
 //--------------------------------------------------------------------------------------------------
 
-pub mod config;
-pub mod filesystem;
-pub mod service;
-#[cfg(test)]
-pub mod utils;
+pub(crate) use authenticate::*;
+pub(crate) use open_at::*;

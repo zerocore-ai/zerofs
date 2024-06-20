@@ -1,30 +1,48 @@
 use std::time::SystemTime;
 
+use super::EntityType;
+
 //--------------------------------------------------------------------------------------------------
 // Types
 //--------------------------------------------------------------------------------------------------
 
-/// Metadata for a file or directory in the file system.
+/// Relevant metadata for a file system entity.
+///
+/// This mostly corresponds to the `descriptor-stat` structure in the WASI.
+/// `zerofs` does not support hard links, so there is no `link-count` field.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Metadata {
-    // pub mode: u32, // TODO: Replace with capability-based security model
-    /// The size of the file or directory in bytes.
-    pub size: u64,
-
-    /// The creation time of the file or directory.
-    pub created_at: SystemTime, // SystemTime?
-
-    /// The last modified time of the file or directory.
-    pub modified_at: SystemTime,
-
     /// The type of the entity.
     pub entity_type: EntityType,
+
+    /// The size of the entity in bytes.
+    pub size: u64,
+
+    /// The time of the last access of the entity.
+    pub accessed_at: SystemTime,
+
+    /// The time the entity was created.
+    pub created_at: SystemTime,
+
+    /// The time of the last modification of the entity.
+    pub modified_at: SystemTime,
 }
 
-/// The type of an entity in the file system.
-pub enum EntityType {
-    /// A file.
-    File,
+//--------------------------------------------------------------------------------------------------
+// Methods
+//--------------------------------------------------------------------------------------------------
 
-    /// A directory.
-    Directory,
+impl Metadata {
+    /// Creates a new metadata object.
+    pub fn new(entity_type: EntityType) -> Self {
+        let now = SystemTime::now();
+
+        Self {
+            entity_type,
+            size: 0,
+            accessed_at: now,
+            created_at: now,
+            modified_at: now,
+        }
+    }
 }

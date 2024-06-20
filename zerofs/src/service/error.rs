@@ -1,23 +1,31 @@
 use thiserror::Error;
 
-use crate::BlockId;
-
 //--------------------------------------------------------------------------------------------------
 // Types
 //--------------------------------------------------------------------------------------------------
 
 /// The result of a file system operation.
-pub type FsResult<T> = Result<T, FsError>;
+pub type ServiceResult<T> = Result<T, ServiceError>;
 
 /// An error that occurred during a file system operation.
-#[derive(Debug, Error, PartialEq)]
-pub enum FsError {
-    /// The block was not found.
-    #[error("Block not found: {block_id}")]
-    BlockNotFound {
-        /// The ID of the block that was not found.
-        block_id: BlockId,
-    },
+#[derive(Debug, Error)]
+pub enum ServiceError {
+    /// Io error.
+    #[error("Io error: {0}")]
+    IoError(#[from] std::io::Error),
+
+    /// Key error.
+    #[error("Key error: {0}")]
+    KeyError(#[from] zeroutils_key::KeyError),
+
+    /// Config error.
+    #[error("Config error: {0}")]
+    ConfigError(#[from] zeroutils_config::ConfigError),
+
+
+    /// Did error.
+    #[error("Did error: {0}")]
+    DidError(#[from] zeroutils_did_wk::DidError),
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -26,6 +34,6 @@ pub enum FsError {
 
 /// Creates an `Ok` `FsResult` d.
 #[allow(non_snake_case)]
-pub fn Ok<T>(value: T) -> FsResult<T> {
+pub fn Ok<T>(value: T) -> ServiceResult<T> {
     Result::Ok(value)
 }

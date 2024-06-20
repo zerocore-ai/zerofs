@@ -1,15 +1,15 @@
-use std::path::PathBuf;
-
 //--------------------------------------------------------------------------------------------------
 // Types
 //--------------------------------------------------------------------------------------------------
 
-/// A block store that stores blocks on disk.
-pub struct DiskBlockStore {
-    /// The base directory where the blocks are stored.
-    _base_dir: PathBuf, // Default ~/.zerofs
+/// A file input stream.
+pub struct FileInputStream {
+    // pub offset: u64,
 }
 
+/// A file output stream.
+pub struct FileOutputStream {}
+
 //--------------------------------------------------------------------------------------------------
-// Methods
+// Trait Implementations
 //--------------------------------------------------------------------------------------------------
