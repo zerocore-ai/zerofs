@@ -13,13 +13,13 @@ where
     S: IpldStore,
 {
     /// The name of the file.
-    name: String,
+    _name: String,
 
     /// File metadata.
-    metadata: Metadata,
+    _metadata: Metadata,
 
     /// The store used to persist blocks in the file.
-    store: S,
+    _store: S,
 }
 
 //--------------------------------------------------------------------------------------------------

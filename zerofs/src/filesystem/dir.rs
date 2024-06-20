@@ -19,16 +19,16 @@ where
     S: IpldStore,
 {
     /// The name of the directory.
-    name: String,
+    _name: String,
 
     /// Directory metadata.
-    metadata: Metadata,
+    _metadata: Metadata,
 
     /// The store used to persist blocks in the directory.
-    store: S,
+    _store: S,
 
     /// The entries in the directory.
-    entries: Vec<Entity<S>>,
+    _entries: Vec<Entity<S>>,
 }
 
 /// A builder for constructing a zerof directory or file system.
@@ -52,13 +52,13 @@ where
     S: IpldStore,
 {
     /// Opens the file, directory at the given path.
-    pub fn open_at<'b>(
+    pub fn open_at(
         &self,
-        path: impl TryInto<Path>,
-        path_flags: PathFlags,
-        open_flags: OpenFlags,
-        entity_flags: EntityFlags,
-        ucan: SignedUcan<'b, S>,
+        _path: impl TryInto<Path>,
+        _path_flags: PathFlags,
+        _open_flags: OpenFlags,
+        _entity_flags: EntityFlags,
+        _ucan: SignedUcan<S>,
     ) -> FsResult<Entity<S>> {
         unimplemented!()
     }
@@ -74,17 +74,17 @@ impl<S> DirBuilder<S> {
     }
 }
 
-impl<'a, S> DirBuilder<S>
+impl<S> DirBuilder<S>
 where
     S: IpldStore,
 {
     /// Builds the file system.
     pub fn build(self) -> Dir<S> {
         Dir {
-            metadata: Metadata::new(EntityType::Dir),
-            name: "/".to_string(),
-            store: self.store,
-            entries: Vec::new(),
+            _metadata: Metadata::new(EntityType::Dir),
+            _name: "/".to_string(),
+            _store: self.store,
+            _entries: Vec::new(),
         }
     }
 }
@@ -113,12 +113,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_fs_open_at() -> anyhow::Result<()> {
-        // let mem_store = MemoryStore::default();
-        // let keypair = Ed25519KeyPair::generate(&mut rand::thread_rng())?;
+        let mem_store = MemoryStore::default();
+        let _keypair = Ed25519KeyPair::generate(&mut rand::thread_rng())?;
 
-        // let fs = Dir::builder()
-        //     .store(mem_store)
-        //     .build();
+        let _fs = Dir::builder().store(mem_store).build();
 
         // let file = fs.open_at("cats/tabby.txt")?.as_file().unwrap();
 

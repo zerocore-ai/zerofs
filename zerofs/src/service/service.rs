@@ -25,7 +25,6 @@ where
 
     /// The configuration of the file system.
     pub config: SharedConfig,
-
     // /// Raft node.
     // pub raft: RaftNode<FsStateMachine<DiskStore>, ...>,
 }

@@ -1,6 +1,6 @@
-use cid::Cid;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+use zeroutils_store::ipld::cid::Cid;
 
 use crate::filesystem::{EntityFlags, OpenFlags, Path, PathFlags};
 
@@ -13,6 +13,7 @@ use crate::filesystem::{EntityFlags, OpenFlags, Path, PathFlags};
 pub enum EntityHandle {
     /// A handle to a file.
     File(FileHandle),
+
     /// A handle to a directory.
     Dir(DirHandle),
 }

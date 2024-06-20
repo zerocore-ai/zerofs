@@ -10,7 +10,6 @@ authors.workspace = true
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
-cid = { workspace = true, features = ["serde"] }
 structstruck.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
@@ -21,23 +20,22 @@ home = "0.5.9"
 regex.workspace = true
 lazy_static.workspace = true
 bitflags = { workspace = true, features = ["serde"] }
-axum = { version = "0.7.5", features = ["http2"] }
 zeroutils-did-wk.workspace = true
 zeroutils-ucan.workspace = true
 zeroraft.workspace = true
 serde = { workspace = true, features = ["derive"] }
 zeroutils-key.workspace = true
 zeroutils-store.workspace = true
-tower.workspace = true
 zeroutils-config.workspace = true
 toml.workspace = true
 serde_with = "3.8.1"
 tracing-subscriber.workspace = true
 tracing.workspace = true
+axum = "0.7.5"
 
 [[bin]]
-name = "ipc_service"
-path = "bin/ipc_service.rs"
+name = "fsserver"
+path = "bin/fsserver.rs"
 
 [features]
 wasi = []

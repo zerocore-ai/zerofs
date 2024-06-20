@@ -9,7 +9,7 @@ use axum::{
 // Constants
 //--------------------------------------------------------------------------------------------------
 
-const AUTHZ_USER_TOKEN_NAME: &str = "x-authz-user-token";
+const _AUTHZ_USER_TOKEN_NAME: &str = "x-authz-user-token";
 
 //--------------------------------------------------------------------------------------------------
 // Functions

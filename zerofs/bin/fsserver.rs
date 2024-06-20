@@ -12,7 +12,8 @@ use zerofs::{
 #[tokio::main]
 async fn main() -> ServiceResult<()> {
     tracing_subscriber::fmt::init();
-    let _config = Arc::new(ZerofsConfig::default());
 
-    Ok(())
+    let config = Arc::new(ZerofsConfig::default());
+    let server = FsHttpServer::new(config);
+    server.start().await
 }

@@ -15,14 +15,14 @@ use super::{constant, FsError, FsResult};
 //--------------------------------------------------------------------------------------------------
 
 /// A path in the file system.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Path {
     /// The segments of the path.
     pub segments: Vec<PathSegment>,
 }
 
 /// A segment of a path.
-#[derive(Debug, Clone, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PathSegment(String);
 
 //--------------------------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ pub struct PathSegment(String);
 
 impl Path {
     /// Creates a path from an iterator of path segments.
-    pub fn from_iter<T>(
+    pub fn try_from_iter<T>(
         iter: impl IntoIterator<Item = T>,
     ) -> Result<Self, <T as TryInto<PathSegment>>::Error>
     where

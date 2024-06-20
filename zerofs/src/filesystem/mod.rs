@@ -10,6 +10,7 @@ mod io;
 mod kind;
 mod metadata;
 mod path;
+mod store;
 mod symlink;
 
 //--------------------------------------------------------------------------------------------------
@@ -26,4 +27,5 @@ pub use io::*;
 pub use kind::*;
 pub use metadata::*;
 pub use path::*;
+pub use store::*;
 pub use symlink::*;

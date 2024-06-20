@@ -22,7 +22,6 @@ pub enum ServiceError {
     #[error("Config error: {0}")]
     ConfigError(#[from] zeroutils_config::ConfigError),
 
-
     /// Did error.
     #[error("Did error: {0}")]
     DidError(#[from] zeroutils_did_wk::DidError),
