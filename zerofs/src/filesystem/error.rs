@@ -2,6 +2,8 @@ use std::{error::Error, fmt::Display};
 
 use thiserror::Error;
 
+use super::Path;
+
 //--------------------------------------------------------------------------------------------------
 // Types
 //--------------------------------------------------------------------------------------------------
@@ -12,17 +14,33 @@ pub type FsResult<T> = Result<T, FsError>;
 /// An error that occurred during a file system operation.
 #[derive(Debug, Error)]
 pub enum FsError {
+    /// Infallible error.
+    #[error("Infallible error")]
+    Infallible(#[from] core::convert::Infallible),
+
     /// When a path segment is invalid.
     #[error("Invalid path segment: {0:?}")]
     InvalidPathSegment(String),
 
     /// Not a file.
-    #[error("Not a file")]
-    NotAFile,
+    #[error("Not a file: {0:?}")]
+    NotAFile(Option<Path>),
 
     /// Not a directory.
-    #[error("Not a directory")]
-    NotADirectory,
+    #[error("Not a directory: {0:?}")]
+    NotADirectory(Option<Path>),
+
+    /// Not found.
+    #[error("Not found: {0}")]
+    NotFound(Path),
+
+    /// Leading `.` in path.
+    #[error("Leading `.` in path")]
+    LeadingCurrentDir,
+
+    /// Out of bounds `..` in path.
+    #[error("Out of bounds `..` in path")]
+    OutOfBoundsParentDir,
 
     /// UCAN error.
     #[error("UCAN error: {0}")]
@@ -35,6 +53,22 @@ pub enum FsError {
     /// DID related error.
     #[error("DID error: {0}")]
     Did(#[from] zeroutils_did_wk::DidError),
+
+    /// IPLD Store error.
+    #[error("IPLD Store error: {0}")]
+    IpldStore(#[from] zeroutils_store::StoreError),
+
+    /// Invalid deserialized OpenFlag value
+    #[error("Invalid OpenFlag value: {0}")]
+    InvalidOpenFlag(u8),
+
+    /// Invalid deserialized EntityFlag value
+    #[error("Invalid EntityFlag value: {0}")]
+    InvalidEntityFlag(u8),
+
+    /// Invalid deserialized PathFlag value
+    #[error("Invalid PathFlag value: {0}")]
+    InvalidPathFlag(u8),
 }
 
 /// An error that can represent any error.

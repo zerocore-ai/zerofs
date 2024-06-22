@@ -10,7 +10,7 @@ bitflags! {
     ///
     /// This corresponds to `descriptor-rights` in the WASI. `zerofs` does not support all the rights
     /// that WASI supports.
-    #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct EntityFlags: u8 {
         /// The specifies that the file system entity can be read from.
         ///
@@ -26,14 +26,14 @@ bitflags! {
     }
 
     /// Flags to determine how to open a path.
-    #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct PathFlags: u8 {
         /// Follow symlinks.
         const SYMLINK_FOLLOW = 0b0000_0001;
     }
 
     /// Flags to determine how to open a file.
-    #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct OpenFlags: u8 {
         /// Create the entity if it does not exist.
         const CREATE = 0b0000_0001;

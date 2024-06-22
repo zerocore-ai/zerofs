@@ -1,5 +1,5 @@
 [workspace]
-members = ["zerofs", "zerofs-cli", "zerofs-fuse"]
+members = ["zerofs", "zerofs-cli", "zerofs-fuse", "zerofs-nfs"]
 
 [workspace.package]
 edition = "2018"
@@ -12,6 +12,7 @@ authors = ["Stephen Akinyemi <steve@zerocore.ai>"]
 async-trait = "0.1.77"
 anyhow = "1.0.79"
 bitflags = "2.5.0"
+chrono = "0.4.38"
 cid = "0.11.1"
 clap = { version = "4.4.8", features = ["derive", "color"] }
 did-key = "0.2.1"

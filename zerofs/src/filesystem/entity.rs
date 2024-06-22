@@ -1,4 +1,7 @@
-use zeroutils_store::IpldStore;
+use core::fmt;
+use std::fmt::Debug;
+
+use zeroutils_store::{ipld::cid::Cid, IpldStore, Storable, StoreResult};
 
 use super::{Dir, File, FsError, FsResult, Symlink};
 
@@ -7,7 +10,7 @@ use super::{Dir, File, FsError, FsResult, Symlink};
 //--------------------------------------------------------------------------------------------------
 
 /// This is an entity in the file system.
-#[derive(Debug)]
+#[derive(Clone)]
 pub enum Entity<S>
 where
     S: IpldStore,
@@ -46,7 +49,7 @@ where
             return Ok(file);
         }
 
-        Err(FsError::NotAFile)
+        Err(FsError::NotAFile(None))
     }
 
     /// Tries to convert the entity to a directory.
@@ -55,6 +58,41 @@ where
             return Ok(dir);
         }
 
-        Err(FsError::NotADirectory)
+        Err(FsError::NotADirectory(None))
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+// Trait Implementations
+//--------------------------------------------------------------------------------------------------
+
+impl<S> Storable<S> for Entity<S>
+where
+    S: IpldStore,
+{
+    async fn store(&self) -> StoreResult<Cid> {
+        match self {
+            Entity::File(file) => file.store().await,
+            Entity::Dir(dir) => dir.store().await,
+            Entity::Symlink(symlink) => symlink.store().await,
+        }
+    }
+
+    async fn load(_cid: &Cid, _store: S) -> StoreResult<Self> {
+        // TODO: Implement
+        unimplemented!()
+    }
+}
+
+impl<S> Debug for Entity<S>
+where
+    S: IpldStore,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Entity::File(file) => f.debug_tuple("File").field(file).finish(),
+            Entity::Dir(dir) => f.debug_tuple("Dir").field(dir).finish(),
+            Entity::Symlink(symlink) => f.debug_tuple("Symlink").field(symlink).finish(),
+        }
     }
 }

@@ -50,7 +50,7 @@ impl DiskStore {
 //--------------------------------------------------------------------------------------------------
 
 impl IpldStore for DiskStore {
-    async fn put<T>(&self, _data: T) -> StoreResult<Cid>
+    async fn put<T>(&self, _data: &T) -> StoreResult<Cid>
     where
         T: Serialize + IpldReferences,
     {

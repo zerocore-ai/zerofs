@@ -61,7 +61,7 @@ where
         config.validate()?;
 
         let service = FsService {
-            root_dir: Dir::builder().store(self.store).build(),
+            root_dir: Dir::new(self.store),
             config: Arc::new(config),
         };
 

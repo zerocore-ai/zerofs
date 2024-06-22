@@ -1,4 +1,5 @@
-use std::time::SystemTime;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 use super::EntityType;
 
@@ -10,7 +11,7 @@ use super::EntityType;
 ///
 /// This mostly corresponds to the `descriptor-stat` structure in the WASI.
 /// `zerofs` does not support hard links, so there is no `link-count` field.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Metadata {
     /// The type of the entity.
     pub entity_type: EntityType,
@@ -19,13 +20,13 @@ pub struct Metadata {
     pub size: u64,
 
     /// The time of the last access of the entity.
-    pub accessed_at: SystemTime,
+    pub accessed_at: DateTime<Utc>,
 
     /// The time the entity was created.
-    pub created_at: SystemTime,
+    pub created_at: DateTime<Utc>,
 
     /// The time of the last modification of the entity.
-    pub modified_at: SystemTime,
+    pub modified_at: DateTime<Utc>,
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -35,7 +36,7 @@ pub struct Metadata {
 impl Metadata {
     /// Creates a new metadata object.
     pub fn new(entity_type: EntityType) -> Self {
-        let now = SystemTime::now();
+        let now = Utc::now();
 
         Self {
             entity_type,

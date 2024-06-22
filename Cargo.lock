@@ -1297,17 +1297,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "jtd"
-version = "0.3.1"
-source = "git+https://github.com/zerocore-ai/json-typedef-rust.git?rev=4257a67#4257a67eaeb1d35912dfa0e8dd2a4c05f4d9aeca"
-dependencies = [
- "chrono",
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
 name = "keccak"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3237,10 +3226,12 @@ name = "zerofs"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-once-cell",
  "async-trait",
  "axum",
  "bitflags 2.5.0",
  "bytes",
+ "chrono",
  "home",
  "lazy_static",
  "procspawn",
@@ -3270,6 +3261,10 @@ version = "0.1.0"
 
 [[package]]
 name = "zerofs-fuse"
+version = "0.1.0"
+
+[[package]]
+name = "zerofs-nfs"
 version = "0.1.0"
 
 [[package]]
@@ -3435,7 +3430,6 @@ dependencies = [
  "either",
  "fluent-uri",
  "itertools",
- "jtd",
  "lazy_static",
  "libipld",
  "proptest",

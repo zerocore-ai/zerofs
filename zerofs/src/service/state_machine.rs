@@ -1,6 +1,15 @@
+use zeroutils_store::IpldStore;
+
+use crate::filesystem::Dir;
+
 //--------------------------------------------------------------------------------------------------
-// Constants
+// Types
 //--------------------------------------------------------------------------------------------------
 
-/// The path separator.
-pub const PATH_SEPARATOR: char = '/';
+/// The filesystem state machine.
+pub struct FsStateMachine<S>
+where
+    S: IpldStore,
+{
+    _root: Dir<S>,
+}
