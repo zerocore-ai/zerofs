@@ -60,7 +60,7 @@ where
     pub fn new(store: S) -> Self {
         Self {
             inner: Arc::new(FileInner {
-                metadata: Metadata::new(EntityType::Dir),
+                metadata: Metadata::new(EntityType::File),
                 store,
             }),
         }
