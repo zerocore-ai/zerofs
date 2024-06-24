@@ -9,7 +9,7 @@ use zeroutils_store::{
     ipld::cid::Cid, IpldReferences, IpldStore, Storable, StoreError, StoreResult,
 };
 
-use super::{EntityFlags, EntityType, FileDescriptor, FsError, FsResult, Metadata};
+use super::{DescriptorFlags, EntityType, FileDescriptor, FsError, FsResult, Metadata};
 
 //--------------------------------------------------------------------------------------------------
 // Types
@@ -30,6 +30,9 @@ where
 {
     /// File metadata.
     pub(crate) metadata: Metadata,
+
+    /// File content.
+    // pub(crate) content: FileContent<S>,
 
     /// The store used to persist blocks in the file.
     pub(crate) store: S,
@@ -66,11 +69,19 @@ where
         }
     }
 
+    /// Creates a new file descriptor.
+    pub fn new_fd(store: S, descriptor_flags: DescriptorFlags) -> FileDescriptor<S> {
+        FileDescriptor {
+            entity: File::new(store),
+            flags: descriptor_flags,
+        }
+    }
+
     /// Creates a new file descriptor for the file.
-    pub fn into_fd(self, entity_flags: EntityFlags) -> FileDescriptor<S> {
+    pub fn into_fd(self, flags: DescriptorFlags) -> FileDescriptor<S> {
         FileDescriptor {
             entity: self,
-            flags: entity_flags,
+            flags,
         }
     }
 

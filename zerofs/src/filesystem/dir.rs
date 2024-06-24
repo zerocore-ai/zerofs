@@ -16,8 +16,8 @@ use zeroutils_store::{
 use zeroutils_ucan::SignedUcan;
 
 use super::{
-    CidLink, DirDescriptor, Entity, EntityFlags, EntityType, File, FileDescriptor, FsError,
-    FsResult, Link, Metadata, OpenFlags, Path, PathFlags, PathSegment,
+    CidLink, DescriptorFlags, DirDescriptor, Entity, EntityDescriptor, EntityType, File, FsError,
+    FsResult, Link, Metadata, OpenFlags, Path, PathFlags, PathSegment, PermissionError,
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ pub struct EntriesGuardIter<'a, S>
 where
     S: IpldStore,
 {
-    /// Holds a reference to the array's data.
+    /// Holds a reference to the guard's data.
     /// Declared first to ensure it is dropped before the guard.
     inner: hash_map::Iter<'a, String, Link<Cid, S>>,
 
@@ -137,39 +137,20 @@ where
         }
     }
 
-    /// Creates a new directory descriptor for the directory.
-    pub fn into_fd(self, entity_flags: EntityFlags) -> DirDescriptor<S> {
+    /// Creates a new directory descriptor.
+    pub fn new_fd(store: S, descriptor_flags: DescriptorFlags) -> DirDescriptor<S> {
         DirDescriptor {
-            entity: self,
-            flags: entity_flags,
+            entity: Dir::new(store),
+            flags: descriptor_flags,
         }
     }
 
-    /// Deserializes to a `Dir` using an arbitrary deserializer and store.
-    pub fn deserialize_with<'de>(
-        deserializer: impl Deserializer<'de, Error: Into<FsError>>,
-        store: S,
-    ) -> FsResult<Self> {
-        DirDeserializeSeed::new(store)
-            .deserialize(deserializer)
-            .map_err(Into::into)
-    }
-
-    /// Tries to create a new `Dir` from a serializable representation.
-    pub(crate) fn try_from_serializable(serializable: DirSerializable, store: S) -> FsResult<Self> {
-        let entries: HashMap<_, _> = serializable
-            .entries
-            .into_iter()
-            .map(|(k, v)| (k, Link::from(v)))
-            .collect();
-
-        Ok(Dir {
-            inner: Arc::new(DirInner {
-                metadata: serializable.metadata,
-                store,
-                entries: RwLock::new(entries),
-            }),
-        })
+    /// Creates a new directory descriptor for the directory.
+    pub fn into_fd(self, descriptor_flags: DescriptorFlags) -> DirDescriptor<S> {
+        DirDescriptor {
+            entity: self,
+            flags: descriptor_flags,
+        }
     }
 
     /// Returns an iterator over the entries in the directory.
@@ -278,6 +259,33 @@ where
             }
         }
     }
+
+    /// Deserializes to a `Dir` using an arbitrary deserializer and store.
+    pub fn deserialize_with<'de>(
+        deserializer: impl Deserializer<'de, Error: Into<FsError>>,
+        store: S,
+    ) -> FsResult<Self> {
+        DirDeserializeSeed::new(store)
+            .deserialize(deserializer)
+            .map_err(Into::into)
+    }
+
+    /// Tries to create a new `Dir` from a serializable representation.
+    pub(crate) fn try_from_serializable(serializable: DirSerializable, store: S) -> FsResult<Self> {
+        let entries: HashMap<_, _> = serializable
+            .entries
+            .into_iter()
+            .map(|(k, v)| (k, Link::from(v)))
+            .collect();
+
+        Ok(Dir {
+            inner: Arc::new(DirInner {
+                metadata: serializable.metadata,
+                store,
+                entries: RwLock::new(entries),
+            }),
+        })
+    }
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -294,23 +302,46 @@ where
         path: impl TryInto<Path, Error: Into<FsError>>,
         path_flags: impl Into<PathFlags>,
         open_flags: impl Into<OpenFlags>,
-        entity_flags: impl Into<EntityFlags>,
-        _ucan: SignedUcan<'a, T>,
-    ) -> FsResult<FileDescriptor<S>>
+        descriptor_flags: impl Into<DescriptorFlags>,
+        _ucan: Arc<SignedUcan<'a, T>>,
+    ) -> FsResult<EntityDescriptor<S>>
     where
         T: IpldStore,
     {
         let _path_flags = path_flags.into();
         let open_flags = open_flags.into();
-        let entity_flags = entity_flags.into();
+        let descriptor_flags = descriptor_flags.into();
 
-        // TODO: Do important checks here.
-        // TODO: Handle the UCAN.
+        // TODO: Should we check if at least READ flag is set?
 
+        // Check if there is permission to read directory.
+        if !self.flags.contains(DescriptorFlags::READ) {
+            return Err(PermissionError::NotAllowedToReadDir.into());
+        }
+
+        // Check for descriptor flag permission escalation.
+        if !self.flags.contains(DescriptorFlags::MUTATE_DIR)
+            && (descriptor_flags.contains(DescriptorFlags::MUTATE_DIR)
+                || descriptor_flags.contains(DescriptorFlags::WRITE)
+                || open_flags.contains(OpenFlags::CREATE)
+                || open_flags.contains(OpenFlags::TRUNCATE))
+        {
+            return Err(PermissionError::ChildPermissionEscalation(
+                self.flags,
+                descriptor_flags,
+                open_flags,
+            )
+            .into());
+        }
+
+        // TODO: Check if user has capabilities to create a file in this directory.
+
+        // Split the path into its initial and last segment.
         let path = path.try_into().map_err(Into::into)?;
         let (init, last) = path.split_last();
-        let init = Path::try_from_iter(init.iter().cloned())?;
+        let mut init = Path::try_from_iter(init.iter().cloned())?;
 
+        // Get the leaf directory at the given path, creating it if it does not exist.
         let dir = if open_flags.contains(OpenFlags::CREATE) {
             self.get_or_create_leaf_dir(&init).await?
         } else {
@@ -327,25 +358,28 @@ where
             }
         };
 
-        let fd = match dir.get_entity(last).await? {
+        // Finally get the entity representing `last`.
+        let descriptor = match dir.get_entity(last).await? {
             Some(entity) => match entity {
-                Entity::File(f) => f.clone().into_fd(entity_flags),
-                _ => return Err(FsError::NotAFile(Some(path))),
+                Entity::File(f) => EntityDescriptor::from_file(f.clone(), descriptor_flags),
+                Entity::Dir(d) => EntityDescriptor::from_dir(d.clone(), descriptor_flags),
+                _ => return Err(FsError::NotAFileOrDir(Some(path))),
             },
             None => {
                 if !open_flags.contains(OpenFlags::CREATE) {
-                    return Err(FsError::NotFound(init)); // TODO: Join init and last.
+                    init.push(last.clone());
+                    return Err(FsError::NotFound(init));
                 }
 
                 let file = File::new(dir.inner.store.clone());
                 let cid = file.store().await?;
                 dir.add_entries([(last.to_string(), cid)]);
 
-                file.into_fd(entity_flags)
+                EntityDescriptor::from_file(file, descriptor_flags)
             }
         };
 
-        Ok(fd)
+        Ok(descriptor)
     }
 }
 
@@ -574,21 +608,21 @@ mod tests {
     async fn test_dir_open_at() -> anyhow::Result<()> {
         let store = MemoryStore::default();
         let issuer_key = Ed25519KeyPair::generate(&mut rand::thread_rng())?;
-        let ucan = mock_ucan(&issuer_key, store.clone())?;
+        let ucan = Arc::new(mock_ucan(&issuer_key, store.clone())?);
 
-        let dir = Dir::new(store.clone()).into_fd(EntityFlags::MUTATE_DIR);
-        let fd = dir
+        let dd = Dir::new_fd(store.clone(), DescriptorFlags::MUTATE_DIR);
+        let ed = dd
             .open_at(
                 "public/file",
                 PathFlags::SYMLINK_FOLLOW,
                 OpenFlags::CREATE,
-                EntityFlags::WRITE,
+                DescriptorFlags::WRITE,
                 ucan,
             )
             .await?;
 
         store.print().await;
-        println!("entity: {:#?}", fd); // TODO: Remove
+        println!("entity: {:#?}", ed); // TODO: Remove
 
         Ok(())
     }

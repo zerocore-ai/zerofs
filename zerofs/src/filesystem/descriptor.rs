@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use super::{Dir, EntityFlags, File};
+use super::{DescriptorFlags, Dir, File};
 
 //--------------------------------------------------------------------------------------------------
 // Types
@@ -13,7 +13,7 @@ pub struct Descriptor<E> {
     pub(crate) entity: E,
 
     /// The flags for the descriptor.
-    pub(crate) flags: EntityFlags,
+    pub(crate) flags: DescriptorFlags,
 }
 
 /// A descriptor for a file.
@@ -28,7 +28,12 @@ pub type DirDescriptor<S> = Descriptor<Dir<S>>;
 
 impl<E> Descriptor<E> {
     /// Creates a new descriptor.
-    pub fn flags(&self) -> &EntityFlags {
+    pub fn new(entity: E, flags: DescriptorFlags) -> Self {
+        Descriptor { entity, flags }
+    }
+
+    /// Returns the flags for the descriptor.
+    pub fn flags(&self) -> &DescriptorFlags {
         &self.flags
     }
 }

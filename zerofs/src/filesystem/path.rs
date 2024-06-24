@@ -100,6 +100,16 @@ impl Path {
         })
     }
 
+    /// Pushes a segment to the path.
+    pub fn push(&mut self, segment: PathSegment) {
+        self.segments.push(segment);
+    }
+
+    /// Pops a segment from the path.
+    pub fn pop(&mut self) -> Option<PathSegment> {
+        self.segments.pop()
+    }
+
     /// Returns the number of segments in the path.
     pub fn len(&self) -> usize {
         self.segments.len()
@@ -181,6 +191,12 @@ impl TryFrom<String> for Path {
 
     fn try_from(path: String) -> Result<Self, Self::Error> {
         path.as_str().try_into()
+    }
+}
+
+impl Extend<PathSegment> for Path {
+    fn extend<T: IntoIterator<Item = PathSegment>>(&mut self, iter: T) {
+        self.segments.extend(iter);
     }
 }
 

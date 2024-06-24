@@ -19,9 +19,6 @@ pub struct Metadata {
     /// The size of the entity in bytes.
     pub size: u64,
 
-    /// The time of the last access of the entity.
-    pub accessed_at: DateTime<Utc>,
-
     /// The time the entity was created.
     pub created_at: DateTime<Utc>,
 
@@ -41,7 +38,6 @@ impl Metadata {
         Self {
             entity_type,
             size: 0,
-            accessed_at: now,
             created_at: now,
             modified_at: now,
         }

@@ -3,7 +3,10 @@ use std::fmt::Debug;
 
 use zeroutils_store::{ipld::cid::Cid, IpldStore, Storable, StoreResult};
 
-use super::{Dir, File, FsError, FsResult, Symlink};
+use super::{
+    Descriptor, DescriptorFlags, Dir, DirDescriptor, File, FileDescriptor, FsError, FsResult,
+    Symlink,
+};
 
 //--------------------------------------------------------------------------------------------------
 // Types
@@ -24,6 +27,12 @@ where
     /// A symlink.
     Symlink(Symlink<S>),
 }
+
+/// A descriptor for a file system entity.
+#[derive(Debug)]
+pub struct EntityDescriptor<S>(Descriptor<Entity<S>>)
+where
+    S: IpldStore;
 
 //--------------------------------------------------------------------------------------------------
 // Methods
@@ -59,6 +68,49 @@ where
         }
 
         Err(FsError::NotADirectory(None))
+    }
+}
+
+impl<S> EntityDescriptor<S>
+where
+    S: IpldStore,
+{
+    /// Returns the flags for the entity.
+    pub fn flags(&self) -> &DescriptorFlags {
+        self.0.flags()
+    }
+
+    /// Creates a new descriptor from an entity.
+    pub fn from_entity(entity: Entity<S>, flags: DescriptorFlags) -> Self {
+        EntityDescriptor(Descriptor::new(entity, flags))
+    }
+
+    /// Creates a new descriptor for a file.
+    pub fn from_file(file: File<S>, flags: DescriptorFlags) -> Self {
+        EntityDescriptor(Descriptor::new(Entity::File(file), flags))
+    }
+
+    /// Creates a new descriptor for a directory.
+    pub fn from_dir(dir: Dir<S>, flags: DescriptorFlags) -> Self {
+        EntityDescriptor(Descriptor::new(Entity::Dir(dir), flags))
+    }
+
+    /// Tries to convert the descriptor to a file descriptor.
+    pub fn as_file(self) -> FsResult<FileDescriptor<S>> {
+        let flags = *self.0.flags();
+        self.0
+            .entity
+            .as_file()
+            .map(|file| FileDescriptor::new(file, flags))
+    }
+
+    /// Tries to convert the descriptor to a directory descriptor.
+    pub fn as_dir(self) -> FsResult<DirDescriptor<S>> {
+        let flags = *self.0.flags();
+        self.0
+            .entity
+            .as_dir()
+            .map(|dir| DirDescriptor::new(dir, flags))
     }
 }
 

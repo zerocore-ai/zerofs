@@ -6,13 +6,13 @@ use serde::{Deserialize, Serialize};
 //--------------------------------------------------------------------------------------------------
 
 bitflags! {
-    /// Flags to determine the capabilities of an entity.
+    /// Flags to determine the capabilities of a descriptor.
     ///
     /// This corresponds to `descriptor-rights` in the WASI. `zerofs` does not support all the rights
     /// that WASI supports.
-    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-    pub struct EntityFlags: u8 {
-        /// The specifies that the file system entity can be read from.
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    pub struct DescriptorFlags: u8 {
+        /// The specifies that the file system descriptor can be read from.
         ///
         /// This applies to both files and directories.
         const READ = 0b0000_0001;
@@ -26,14 +26,14 @@ bitflags! {
     }
 
     /// Flags to determine how to open a path.
-    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct PathFlags: u8 {
         /// Follow symlinks.
         const SYMLINK_FOLLOW = 0b0000_0001;
     }
 
     /// Flags to determine how to open a file.
-    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct OpenFlags: u8 {
         /// Create the entity if it does not exist.
         const CREATE = 0b0000_0001;

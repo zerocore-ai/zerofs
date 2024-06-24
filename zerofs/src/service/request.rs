@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use zeroutils_store::ipld::cid::Cid;
 
-use crate::filesystem::{EntityFlags, OpenFlags, Path, PathFlags};
+use crate::filesystem::{DescriptorFlags, OpenFlags, Path, PathFlags};
 
 //--------------------------------------------------------------------------------------------------
 // Types: Handles
@@ -28,7 +28,7 @@ pub struct Flags {
     pub open_flags: OpenFlags,
 
     /// Flags that deal with capabilities of the entity.
-    pub entity_flags: EntityFlags,
+    pub descriptor_flags: DescriptorFlags,
 }
 
 /// Represents a handle to a file in the file system.
@@ -90,7 +90,7 @@ pub enum EntityOperationKind {
         open_flags: OpenFlags,
 
         /// Flags that deal with capabilities of the entity.
-        entity_flags: EntityFlags,
+        entity_flags: DescriptorFlags,
     },
     /// `Read` returns an input stream that can be used to read the contents of the entity.
     Read {

@@ -2,7 +2,7 @@ use std::{error::Error, fmt::Display};
 
 use thiserror::Error;
 
-use super::Path;
+use super::{DescriptorFlags, OpenFlags, Path};
 
 //--------------------------------------------------------------------------------------------------
 // Types
@@ -29,6 +29,10 @@ pub enum FsError {
     /// Not a directory.
     #[error("Not a directory: {0:?}")]
     NotADirectory(Option<Path>),
+
+    /// Not a file or directory.
+    #[error("Not a file or directory: {0:?}")]
+    NotAFileOrDir(Option<Path>),
 
     /// Not found.
     #[error("Not found: {0}")]
@@ -69,6 +73,26 @@ pub enum FsError {
     /// Invalid deserialized PathFlag value
     #[error("Invalid PathFlag value: {0}")]
     InvalidPathFlag(u8),
+
+    /// Permission error.
+    #[error("Permission error: {0}")]
+    PermissionError(#[from] PermissionError),
+
+    /// Wrong file descriptor flags.
+    #[error("Wrong file descriptor flags: {0:?}")]
+    WrongFileDescriptorFlags(DescriptorFlags),
+}
+
+/// Permission error.
+#[derive(Debug, Error)]
+pub enum PermissionError {
+    /// Child descriptor has higher permission than parent.
+    #[error("Child descriptor has higher permission than parent: parent(fd_flags: {0:?}) child (fd_flags: {1:?}, o_flags: {2:?})")]
+    ChildPermissionEscalation(DescriptorFlags, DescriptorFlags, OpenFlags),
+
+    /// Not allowed to read a directory without the `READ` flag.
+    #[error("Not allowed to read a directory without the `READ` flag")]
+    NotAllowedToReadDir,
 }
 
 /// An error that can represent any error.
