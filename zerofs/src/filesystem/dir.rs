@@ -10,10 +10,11 @@ use serde::{
     de::{self, DeserializeSeed},
     Deserialize, Deserializer, Serialize, Serializer,
 };
+use zeroutils_key::GetPublicKey;
 use zeroutils_store::{
     ipld::cid::Cid, IpldReferences, IpldStore, Storable, StoreError, StoreResult,
 };
-use zeroutils_ucan::SignedUcan;
+use zeroutils_ucan::UcanAuth;
 
 use super::{
     CidLink, DescriptorFlags, DirDescriptor, Entity, EntityDescriptor, EntityType, File, FsError,
@@ -138,7 +139,7 @@ where
     }
 
     /// Creates a new directory descriptor.
-    pub fn new_fd(store: S, descriptor_flags: DescriptorFlags) -> DirDescriptor<S> {
+    pub fn new_descriptor(store: S, descriptor_flags: DescriptorFlags) -> DirDescriptor<S> {
         DirDescriptor {
             entity: Dir::new(store),
             flags: descriptor_flags,
@@ -146,7 +147,7 @@ where
     }
 
     /// Creates a new directory descriptor for the directory.
-    pub fn into_fd(self, descriptor_flags: DescriptorFlags) -> DirDescriptor<S> {
+    pub fn into_descriptor(self, descriptor_flags: DescriptorFlags) -> DirDescriptor<S> {
         DirDescriptor {
             entity: self,
             flags: descriptor_flags,
@@ -170,6 +171,11 @@ where
     /// Returns the metadata for the directory.
     pub fn metadata(&self) -> &Metadata {
         &self.inner.metadata
+    }
+
+    /// Returns `true` if the directory is empty.
+    pub fn is_empty(&self) -> bool {
+        self.inner.entries.read().unwrap().is_empty()
     }
 
     /// Gets the entity with the given name from the directory.
@@ -196,7 +202,7 @@ where
         for (depth, segment) in canonical_path.segments().iter().enumerate() {
             match dir.get_entity(segment).await? {
                 Some(Entity::Dir(d)) => dir = d,
-                // TODO: Some(Entity::Symlink(s)) => { ... } // To follow Symlink or not.
+                // TODO: Some(Entity::Symlink(s)) => { ... } // follow_symlink: bool.
                 Some(_) => {
                     return Ok(FindResult::NotADir {
                         dir: dir.clone(),
@@ -224,6 +230,7 @@ where
             } => {
                 let mut end_head = start_head.clone();
                 let mut child: Option<Cid> = None;
+
                 for (i, segment) in path
                     .segments()
                     .iter()
@@ -297,22 +304,24 @@ where
     S: IpldStore,
 {
     /// Opens the file, directory at the given path.
-    pub async fn open_at<'a, T>(
+    pub async fn open_at<'a, T, K>(
         &self,
         path: impl TryInto<Path, Error: Into<FsError>>,
-        path_flags: impl Into<PathFlags>,
-        open_flags: impl Into<OpenFlags>,
-        descriptor_flags: impl Into<DescriptorFlags>,
-        _ucan: Arc<SignedUcan<'a, T>>,
+        _path_flags: PathFlags, // TODO: Implement SYMLINK_FOLLOW.
+        open_flags: OpenFlags,
+        descriptor_flags: DescriptorFlags,
+        _ucan: UcanAuth<'a, T, K>,
     ) -> FsResult<EntityDescriptor<S>>
     where
         T: IpldStore,
+        K: GetPublicKey,
     {
-        let _path_flags = path_flags.into();
-        let open_flags = open_flags.into();
-        let descriptor_flags = descriptor_flags.into();
+        let path = path.try_into().map_err(Into::into)?;
 
-        // TODO: Should we check if at least READ flag is set?
+        // There should be at least READ flag set on the descriptor flags.
+        if !descriptor_flags.contains(DescriptorFlags::READ) {
+            return Err(FsError::NeedAtLeastReadFlag(path, descriptor_flags));
+        }
 
         // Check if there is permission to read directory.
         if !self.flags.contains(DescriptorFlags::READ) {
@@ -327,6 +336,7 @@ where
                 || open_flags.contains(OpenFlags::TRUNCATE))
         {
             return Err(PermissionError::ChildPermissionEscalation(
+                path,
                 self.flags,
                 descriptor_flags,
                 open_flags,
@@ -334,12 +344,20 @@ where
             .into());
         }
 
+        // Handle conflicting open flags like DIRECTORY and CREATE.
+        if open_flags.contains(OpenFlags::DIRECTORY)
+            && (open_flags.contains(OpenFlags::CREATE)
+                || open_flags.contains(OpenFlags::EXCLUSIVE)
+                || open_flags.contains(OpenFlags::TRUNCATE))
+        {
+            return Err(FsError::InvalidOpenFlagsCombination(path, open_flags));
+        }
+
         // TODO: Check if user has capabilities to create a file in this directory.
 
         // Split the path into its initial and last segment.
-        let path = path.try_into().map_err(Into::into)?;
         let (init, last) = path.split_last();
-        let mut init = Path::try_from_iter(init.iter().cloned())?;
+        let init = Path::try_from_iter(init.iter().cloned())?;
 
         // Get the leaf directory at the given path, creating it if it does not exist.
         let dir = if open_flags.contains(OpenFlags::CREATE) {
@@ -360,15 +378,28 @@ where
 
         // Finally get the entity representing `last`.
         let descriptor = match dir.get_entity(last).await? {
-            Some(entity) => match entity {
-                Entity::File(f) => EntityDescriptor::from_file(f.clone(), descriptor_flags),
-                Entity::Dir(d) => EntityDescriptor::from_dir(d.clone(), descriptor_flags),
-                _ => return Err(FsError::NotAFileOrDir(Some(path))),
-            },
+            Some(entity) => {
+                if open_flags.contains(OpenFlags::EXCLUSIVE) {
+                    return Err(FsError::OpenFlagsExclusiveButEntityExists(path, open_flags));
+                }
+
+                match entity {
+                    Entity::Dir(d) => EntityDescriptor::from_dir(d.clone(), descriptor_flags),
+                    Entity::File(f) => {
+                        if open_flags.contains(OpenFlags::DIRECTORY) {
+                            return Err(FsError::OpenFlagsDirectoryButEntityNotADir(
+                                path, open_flags,
+                            ));
+                        }
+
+                        EntityDescriptor::from_file(f.clone(), descriptor_flags)
+                    }
+                    _ => return Err(FsError::NotAFileOrDir(Some(path))),
+                }
+            }
             None => {
                 if !open_flags.contains(OpenFlags::CREATE) {
-                    init.push(last.clone());
-                    return Err(FsError::NotFound(init));
+                    return Err(FsError::NotFound(path));
                 }
 
                 let file = File::new(dir.inner.store.clone());
@@ -529,9 +560,9 @@ mod tests {
 
     use anyhow::Ok;
     use zeroutils_key::{Ed25519KeyPair, KeyPairGenerate};
-    use zeroutils_store::MemoryStore;
+    use zeroutils_store::{MemoryStore, PlaceholderStore};
 
-    use crate::utils::fixture::mock_ucan;
+    use crate::utils::fixture;
 
     use super::*;
 
@@ -607,22 +638,26 @@ mod tests {
     #[tokio::test]
     async fn test_dir_open_at() -> anyhow::Result<()> {
         let store = MemoryStore::default();
-        let issuer_key = Ed25519KeyPair::generate(&mut rand::thread_rng())?;
-        let ucan = Arc::new(mock_ucan(&issuer_key, store.clone())?);
+        let iss_key = Ed25519KeyPair::generate(&mut rand::thread_rng())?;
+        let auth = fixture::mock_ucan_auth(&iss_key, PlaceholderStore)?;
 
-        let dd = Dir::new_fd(store.clone(), DescriptorFlags::MUTATE_DIR);
+        let dd = Dir::new_descriptor(
+            store.clone(),
+            DescriptorFlags::READ | DescriptorFlags::MUTATE_DIR,
+        );
+
         let ed = dd
             .open_at(
                 "public/file",
                 PathFlags::SYMLINK_FOLLOW,
-                OpenFlags::CREATE,
-                DescriptorFlags::WRITE,
-                ucan,
+                OpenFlags::CREATE | OpenFlags::EXCLUSIVE,
+                DescriptorFlags::READ | DescriptorFlags::WRITE,
+                auth,
             )
             .await?;
 
         store.print().await;
-        println!("entity: {:#?}", ed); // TODO: Remove
+        println!("\nentity: {:#?}", ed); // TODO: Remove
 
         Ok(())
     }

@@ -22,6 +22,7 @@ lazy_static.workspace = true
 bitflags = { workspace = true, features = ["serde"] }
 zeroutils-did-wk.workspace = true
 zeroutils-ucan.workspace = true
+zeroutils-wasi.workspace = true
 zeroraft.workspace = true
 serde = { workspace = true, features = ["derive"] }
 zeroutils-key.workspace = true

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 bitflags! {
     /// Flags to determine the capabilities of a descriptor.
     ///
-    /// This corresponds to `descriptor-rights` in the WASI. `zerofs` does not support all the rights
+    /// This corresponds to `descriptor-flags` in the WASI preview 2. `zerofs` does not support all the rights
     /// that WASI supports.
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct DescriptorFlags: u8 {
@@ -26,6 +26,8 @@ bitflags! {
     }
 
     /// Flags to determine how to open a path.
+    ///
+    /// This corresponds to `path-flags` in the WASI preview 2.
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct PathFlags: u8 {
         /// Follow symlinks.
@@ -33,6 +35,8 @@ bitflags! {
     }
 
     /// Flags to determine how to open a file.
+    ///
+    /// This corresponds to `open-flags` in the WASI preview 2.
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct OpenFlags: u8 {
         /// Create the entity if it does not exist.

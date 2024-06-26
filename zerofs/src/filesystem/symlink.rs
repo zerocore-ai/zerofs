@@ -37,7 +37,7 @@ where
     pub(crate) store: S,
 
     /// The link to the target of the symlink.
-    pub(crate) link: PathLink<S>,
+    pub(crate) link: PathLink<S>, // TODO: Might change this back to CidLink
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -71,6 +71,11 @@ where
                 link: PathLink::from(target),
             }),
         }
+    }
+
+    /// Returns the metadata for the directory.
+    pub fn metadata(&self) -> &Metadata {
+        &self.inner.metadata
     }
 
     /// Gets the target path of the symlink.

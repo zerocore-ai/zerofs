@@ -79,16 +79,34 @@ pub enum FsError {
     PermissionError(#[from] PermissionError),
 
     /// Wrong file descriptor flags.
-    #[error("Wrong file descriptor flags: {0:?}")]
-    WrongFileDescriptorFlags(DescriptorFlags),
+    #[error("Wrong file descriptor flags: path: {0}, descriptor_flags: {1:?}")]
+    WrongFileDescriptorFlags(Path, DescriptorFlags),
+
+    /// Need at least READ flag set on the descriptor flags.
+    #[error(
+        "Need at least READ flag set on the descriptor flags: path: {0}, descriptor_flags: {1:?}"
+    )]
+    NeedAtLeastReadFlag(Path, DescriptorFlags),
+
+    /// Open flags has EXCLUSIVE but entity already exists.
+    #[error("Open flags has EXCLUSIVE but entity already exists: path: {0}, open_flags: {1:?}")]
+    OpenFlagsExclusiveButEntityExists(Path, OpenFlags),
+
+    /// Open flags has DIRECTORY but entity not a directory.
+    #[error("Open flags has DIRECTORY but entity not a directory: path: {0}, open_flags: {1:?}")]
+    OpenFlagsDirectoryButEntityNotADir(Path, OpenFlags),
+
+    /// Invalid open flags combination.
+    #[error("Invalid open flags combination: path: {0}, open_flags: {1:?}")]
+    InvalidOpenFlagsCombination(Path, OpenFlags),
 }
 
 /// Permission error.
 #[derive(Debug, Error)]
 pub enum PermissionError {
     /// Child descriptor has higher permission than parent.
-    #[error("Child descriptor has higher permission than parent: parent(fd_flags: {0:?}) child (fd_flags: {1:?}, o_flags: {2:?})")]
-    ChildPermissionEscalation(DescriptorFlags, DescriptorFlags, OpenFlags),
+    #[error("Child descriptor has higher permission than parent: path: {0}, parent(descriptor_flags: {1:?}) child (descriptor_flags: {2:?}, open_flags: {3:?})")]
+    ChildPermissionEscalation(Path, DescriptorFlags, DescriptorFlags, OpenFlags),
 
     /// Not allowed to read a directory without the `READ` flag.
     #[error("Not allowed to read a directory without the `READ` flag")]

@@ -5,7 +5,7 @@ use zeroutils_store::{ipld::cid::Cid, IpldStore, Storable, StoreResult};
 
 use super::{
     Descriptor, DescriptorFlags, Dir, DirDescriptor, File, FileDescriptor, FsError, FsResult,
-    Symlink,
+    Metadata, Symlink,
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -68,6 +68,15 @@ where
         }
 
         Err(FsError::NotADirectory(None))
+    }
+
+    /// Returns the metadata for the directory.
+    pub fn metadata(&self) -> &Metadata {
+        match self {
+            Entity::File(file) => file.metadata(),
+            Entity::Dir(dir) => dir.metadata(),
+            Entity::Symlink(symlink) => symlink.metadata(),
+        }
     }
 }
 

@@ -5,51 +5,12 @@ use zeroutils_store::ipld::cid::Cid;
 use crate::filesystem::{DescriptorFlags, OpenFlags, Path, PathFlags};
 
 //--------------------------------------------------------------------------------------------------
-// Types: Handles
+// Types: Identifiers
 //--------------------------------------------------------------------------------------------------
 
-/// Represents a handle to a file or directory in the file system.
+/// Represents an identifier that can be used by the service to identify the file system entity.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum EntityHandle {
-    /// A handle to a file.
-    File(FileHandle),
-
-    /// A handle to a directory.
-    Dir(DirHandle),
-}
-
-/// This is all the flags that can be set on an entity.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Flags {
-    /// Flags that determine how a path is resolved.
-    pub path_flags: PathFlags,
-
-    /// Flags that determine how a entity is opened.
-    pub open_flags: OpenFlags,
-
-    /// Flags that deal with capabilities of the entity.
-    pub descriptor_flags: DescriptorFlags,
-}
-
-/// Represents a handle to a file in the file system.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct FileHandle {
-    /// The CID that can be used to retrieve the file.
-    pub id: Cid,
-
-    /// Flags for working with the file.
-    pub flags: Flags,
-}
-
-/// Represents a handle to a directory in the file system.
-#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DirHandle {
-    /// The CID that can be used to retrieve the directory.
-    pub id: Cid,
-
-    /// Flags for working with the directory.
-    pub flags: Flags,
-}
+pub struct EntityIdentifier(Cid);
 
 // pub enum StreamKind { Input, Output }
 // pub struct StreamHandle { kind: StreamKind, handle: FileHandle }
@@ -57,47 +18,44 @@ pub struct DirHandle {
 // pub enum StreamOperationKind { Open, Chunk { data: Vec<u8> }, Close }
 
 //--------------------------------------------------------------------------------------------------
-// Types: Operation
+// Types: Operations
 //--------------------------------------------------------------------------------------------------
 
 /// Represents an operation that can be performed on an entity.
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EntityOperation {
-    /// The handle to the entity to perform the operation on.
+    /// The identifier of the entity to perform the operation on.
     ///
-    /// Note: This is `None` when the operation is to be applied to the root directory.
-    pub handle: Option<EntityHandle>,
+    /// `None` when the operation is to be applied on the root directory the file tree.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub identifier: Option<EntityIdentifier>,
 
     /// The operation to perform on the entity.
     pub operation: EntityOperationKind,
 }
 
 /// Represents an operation that can be performed on an entity.
-#[serde_as]
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "params", rename_all = "snake_case")]
 pub enum EntityOperationKind {
     /// `Open` returns a handle to the entity that can be used to perform other operations on it.
-    OpenAt {
-        /// The path to the entity to open.
-        #[serde_as(as = "serde_with::DisplayFromStr")]
-        path: Path,
+    OpenAt(OpenAt),
+}
 
-        /// Flags that determine how the path is resolved and how the entity is opened.
-        path_flags: PathFlags,
+/// Represents an operation that opens an entity at a given path.
+#[serde_as]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpenAt {
+    /// The path to the entity to open.
+    #[serde_as(as = "serde_with::DisplayFromStr")]
+    path: Path,
 
-        /// Flags that determine how the entity is opened.
-        open_flags: OpenFlags,
+    /// Flags that determine how the path is resolved and how the entity is opened.
+    path_flags: PathFlags, // TODO: Should serialize to u8
 
-        /// Flags that deal with capabilities of the entity.
-        entity_flags: DescriptorFlags,
-    },
-    /// `Read` returns an input stream that can be used to read the contents of the entity.
-    Read {
-        /// The path to the entity to read from.
-        path: Path,
+    /// Flags that determine how the entity is opened.
+    open_flags: OpenFlags, // TODO: Should serialize to u8
 
-        /// The offset in the entity to start reading from.
-        offset: u64,
-    },
+    /// Flags that deal with capabilities of the entity.
+    descriptor_flags: DescriptorFlags, // TODO: Should serialize to u8
 }

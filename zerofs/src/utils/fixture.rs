@@ -1,9 +1,9 @@
 use std::time::{Duration, SystemTime};
 
-use zeroutils_did_wk::{Base, KeyEncode, WrappedDidWebKey};
-use zeroutils_key::{GetPublicKey, JwsAlgName, Sign};
+use zeroutils_did_wk::{Base, WrappedDidWebKey};
+use zeroutils_key::{GetPublicKey, IntoOwned, JwsAlgName, Sign};
 use zeroutils_store::IpldStore;
-use zeroutils_ucan::{caps, SignedUcan, Ucan};
+use zeroutils_ucan::{caps, Ucan, UcanAuth};
 
 use crate::filesystem::FsResult;
 
@@ -11,10 +11,12 @@ use crate::filesystem::FsResult;
 // Function
 //--------------------------------------------------------------------------------------------------
 
-pub fn mock_ucan<'a, K, S>(issuer_key: &'a K, store: S) -> FsResult<SignedUcan<'a, S>>
+pub fn mock_ucan_auth<'a, K, S>(
+    issuer_key: &'a K,
+    store: S,
+) -> FsResult<UcanAuth<'a, S, K::OwnedPublicKey>>
 where
     K: GetPublicKey + Sign + JwsAlgName,
-    K::PublicKey<'a>: KeyEncode,
     S: IpldStore,
 {
     let issuer_did = WrappedDidWebKey::from_key(issuer_key, Base::Base58Btc)?;
@@ -26,5 +28,8 @@ where
         .store(store)
         .sign(issuer_key)?;
 
-    Ok(ucan)
+    let owned_pk = issuer_key.public_key().into_owned();
+    let auth = UcanAuth::new(ucan, owned_pk);
+
+    Ok(auth)
 }

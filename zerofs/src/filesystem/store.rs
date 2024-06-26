@@ -79,4 +79,8 @@ impl IpldStore for DiskStore {
     fn supported_codecs(&self) -> HashSet<Codec> {
         todo!()
     }
+
+    fn block_size_hint(&self) -> (usize, Option<usize>) {
+        todo!()
+    }
 }
