@@ -46,7 +46,7 @@ impl<'a, S, K> FsServiceBuilder<'a, S, K> {
 
 impl<'a, S, K> FsServiceBuilder<'a, S, K>
 where
-    S: IpldStore,
+    S: IpldStore + Send + Sync,
     K: GetPublicKey,
 {
     /// Builds the file system service.

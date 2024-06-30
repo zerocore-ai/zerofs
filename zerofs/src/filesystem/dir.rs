@@ -1,11 +1,10 @@
 use std::{
-    collections::{hash_map, BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap},
     convert::TryInto,
     fmt::{self, Debug},
-    sync::{Arc, RwLock, RwLockReadGuard},
+    sync::Arc,
 };
 
-use aliasable::boxed::AliasableBox;
 use serde::{
     de::{self, DeserializeSeed},
     Deserialize, Deserializer, Serialize, Serializer,
@@ -17,8 +16,9 @@ use zeroutils_store::{
 use zeroutils_ucan::UcanAuth;
 
 use super::{
-    CidLink, DescriptorFlags, DirDescriptor, Entity, EntityDescriptor, EntityType, File, FsError,
-    FsResult, Link, Metadata, OpenFlags, Path, PathFlags, PathSegment, PermissionError,
+    DescriptorFlags, DirDescriptor, Entity, EntityCidLink, EntityDescriptor, EntityType, File,
+    FsError, FsResult, Link, Metadata, OpenFlags, Path, PathFlags, PathSegment, PermissionError,
+    Resolvable,
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -48,31 +48,12 @@ where
     pub(crate) store: S,
 
     /// The entries in the directory.
-    pub(crate) entries: RwLock<HashMap<String, CidLink<S>>>,
+    pub(crate) entries: HashMap<String, EntityCidLink<S>>,
 }
 
 //--------------------------------------------------------------------------------------------------
 // Types: *
 //--------------------------------------------------------------------------------------------------
-
-/// Iterator over the entries in a directory.
-///
-/// ## Important
-///
-/// This is a self-referential struct that holds a reference to the read guard of the entries in the
-/// directory.
-pub struct EntriesGuardIter<'a, S>
-where
-    S: IpldStore,
-{
-    /// Holds a reference to the guard's data.
-    /// Declared first to ensure it is dropped before the guard.
-    inner: hash_map::Iter<'a, String, Link<Cid, S>>,
-
-    /// Must not move this box as it is aliased by `inner`.
-    #[allow(dead_code)]
-    guard: AliasableBox<RwLockReadGuard<'a, HashMap<String, CidLink<S>>>>,
-}
 
 enum FindResult<S>
 where
@@ -99,33 +80,12 @@ pub(crate) struct DirDeserializeSeed<S> {
 }
 
 //--------------------------------------------------------------------------------------------------
-// Methods: Iter
-//--------------------------------------------------------------------------------------------------
-
-impl<'a, S> EntriesGuardIter<'a, S>
-where
-    S: IpldStore,
-{
-    fn from(dir: &'a Dir<S>) -> Self {
-        let guard = AliasableBox::from_unique(Box::new(dir.inner.entries.read().unwrap()));
-        let inner = guard.iter();
-        let inner = unsafe {
-            std::mem::transmute::<
-                hash_map::Iter<String, CidLink<S>>,
-                hash_map::Iter<String, CidLink<S>>,
-            >(inner)
-        };
-        EntriesGuardIter { inner, guard }
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
 // Methods: Dir
 //--------------------------------------------------------------------------------------------------
 
 impl<S> Dir<S>
 where
-    S: IpldStore,
+    S: IpldStore + Send + Sync,
 {
     /// Creates a new directory with the given store.
     pub fn new(store: S) -> Self {
@@ -133,7 +93,7 @@ where
             inner: Arc::new(DirInner {
                 metadata: Metadata::new(EntityType::Dir),
                 store,
-                entries: RwLock::new(HashMap::new()),
+                entries: HashMap::new(),
             }),
         }
     }
@@ -155,17 +115,16 @@ where
     }
 
     /// Returns an iterator over the entries in the directory.
-    pub fn entries(&self) -> EntriesGuardIter<'_, S> {
-        EntriesGuardIter::from(self)
+    pub fn entries(&self) -> impl Iterator<Item = (&String, &EntityCidLink<S>)> {
+        self.inner.entries.iter()
     }
 
     /// Adds the given entries to the directory.
-    pub fn add_entries(&self, entries: impl IntoIterator<Item = (String, Cid)>) {
-        self.inner
-            .entries
-            .write()
-            .unwrap()
-            .extend(entries.into_iter().map(|(k, v)| (k, CidLink::from(v))));
+    pub fn add_entries(&self, _entries: impl IntoIterator<Item = (String, Cid)>) {
+        todo!() // TODO: Implement this method.
+                // self.inner
+                //     .entries
+                //     .extend(entries.into_iter().map(|(k, v)| (k, CidLink::from(v))));
     }
 
     /// Returns the metadata for the directory.
@@ -175,7 +134,7 @@ where
 
     /// Returns `true` if the directory is empty.
     pub fn is_empty(&self) -> bool {
-        self.inner.entries.read().unwrap().is_empty()
+        self.inner.entries.is_empty()
     }
 
     /// Gets the entity with the given name from the directory.
@@ -188,7 +147,7 @@ where
             .entries()
             .find(|(name, _)| *name == &path_segment.to_string())
         {
-            let entity = link.resolve_entity(self.inner.store.clone()).await?;
+            let entity = link.resolve(self.inner.store.clone()).await?;
             return Ok(Some(entity));
         }
 
@@ -289,7 +248,7 @@ where
             inner: Arc::new(DirInner {
                 metadata: serializable.metadata,
                 store,
-                entries: RwLock::new(entries),
+                entries,
             }),
         })
     }
@@ -301,7 +260,7 @@ where
 
 impl<S> DirDescriptor<S>
 where
-    S: IpldStore,
+    S: IpldStore + Send + Sync,
 {
     /// Opens the file, directory at the given path.
     pub async fn open_at<'a, T, K>(
@@ -361,9 +320,9 @@ where
 
         // Get the leaf directory at the given path, creating it if it does not exist.
         let dir = if open_flags.contains(OpenFlags::CREATE) {
-            self.get_or_create_leaf_dir(&init).await?
+            self.entity.get_or_create_leaf_dir(&init).await?
         } else {
-            match self.get_leaf_dir(&init).await? {
+            match self.entity.get_leaf_dir(&init).await? {
                 FindResult::Found(dir) => dir,
                 FindResult::Incomplete { depth, .. } => {
                     let path = Path::try_from_iter(init.iter().take(depth).cloned())?;
@@ -430,30 +389,30 @@ impl<S> DirDeserializeSeed<S> {
 
 impl<S> IpldReferences for Dir<S>
 where
-    S: IpldStore,
+    S: IpldStore + Send + Sync,
 {
-    fn references<'a>(&'a self) -> Box<dyn Iterator<Item = &'a Cid> + 'a> {
+    fn references<'a>(&'a self) -> Box<dyn Iterator<Item = &'a Cid> + Send + 'a> {
         Box::new(self.entries().map(|(_, v)| v.cid()))
     }
 }
 
 impl<S> Storable<S> for Dir<S>
 where
-    S: IpldStore,
+    S: IpldStore + Send + Sync,
 {
     async fn store(&self) -> StoreResult<Cid> {
-        self.inner.store.put(self).await
+        self.inner.store.put_node(self).await
     }
 
     async fn load(cid: &Cid, store: S) -> StoreResult<Self> {
-        let serializable: DirSerializable = store.get(cid).await?;
+        let serializable: DirSerializable = store.get_node(cid).await?;
         Dir::try_from_serializable(serializable, store).map_err(StoreError::custom)
     }
 }
 
 impl<S> Debug for Dir<S>
 where
-    S: IpldStore,
+    S: IpldStore + Send + Sync,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Dir")
@@ -468,7 +427,7 @@ where
 
 impl<S> Serialize for Dir<S>
 where
-    S: IpldStore,
+    S: IpldStore + Send + Sync,
 {
     fn serialize<T>(&self, serializer: T) -> Result<T::Ok, T::Error>
     where
@@ -485,7 +444,7 @@ where
 
 impl<'de, S> DeserializeSeed<'de> for DirDeserializeSeed<S>
 where
-    S: IpldStore,
+    S: IpldStore + Send + Sync,
 {
     type Value = Dir<S>;
 
@@ -513,14 +472,14 @@ where
 {
     fn eq(&self, other: &Self) -> bool {
         self.metadata == other.metadata
-            && self.entries.read().unwrap().len() == other.entries.read().unwrap().len()
-            && *self.entries.read().unwrap() == *other.entries.read().unwrap()
+            && self.entries.len() == other.entries.len()
+            && self.entries == other.entries
     }
 }
 
 impl<S> Debug for FindResult<S>
 where
-    S: IpldStore,
+    S: IpldStore + Send + Sync,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -536,17 +495,6 @@ where
                 .field("depth", depth)
                 .finish(),
         }
-    }
-}
-
-impl<'a, S> Iterator for EntriesGuardIter<'a, S>
-where
-    S: IpldStore,
-{
-    type Item = (&'a String, &'a Link<Cid, S>);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner.next()
     }
 }
 
@@ -571,7 +519,7 @@ mod tests {
         let store = MemoryStore::default();
         let dir = Dir::new(store);
 
-        assert!(dir.inner.entries.read().unwrap().is_empty());
+        assert!(dir.inner.entries.is_empty());
 
         Ok(())
     }
@@ -592,25 +540,13 @@ mod tests {
             ),
         ]);
 
-        assert_eq!(dir.inner.entries.read().unwrap().len(), 2);
+        assert_eq!(dir.inner.entries.len(), 2);
         assert_eq!(
-            dir.inner
-                .entries
-                .read()
-                .unwrap()
-                .get("file1")
-                .unwrap()
-                .cid(),
+            dir.inner.entries.get("file1").unwrap().cid(),
             &Cid::from_str("bafkreidgvpkjawlxz6sffxzwgooowe5yt7i6wsyg236mfoks77nywkptdq")?
         );
         assert_eq!(
-            dir.inner
-                .entries
-                .read()
-                .unwrap()
-                .get("file2")
-                .unwrap()
-                .cid(),
+            dir.inner.entries.get("file2").unwrap().cid(),
             &Cid::from_str("bafkreidgvpkjawlxz6sffxzwgooowe5yt7i6wsyg236mfoks77nywkptdq")?
         );
 

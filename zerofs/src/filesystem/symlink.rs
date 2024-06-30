@@ -125,7 +125,7 @@ impl<S> IpldReferences for Symlink<S>
 where
     S: IpldStore,
 {
-    fn references<'a>(&'a self) -> Box<dyn Iterator<Item = &'a Cid> + 'a> {
+    fn references<'a>(&'a self) -> Box<dyn Iterator<Item = &'a Cid> + Send + 'a> {
         Box::new(std::iter::empty())
     }
 }
@@ -164,14 +164,14 @@ where
 
 impl<S> Storable<S> for Symlink<S>
 where
-    S: IpldStore,
+    S: IpldStore + Send + Sync,
 {
     async fn store(&self) -> StoreResult<Cid> {
-        self.inner.store.put(self).await
+        self.inner.store.put_node(self).await
     }
 
     async fn load(cid: &Cid, store: S) -> StoreResult<Self> {
-        let serializable = store.get(cid).await?;
+        let serializable = store.get_node(cid).await?;
         Symlink::try_from_serializable(serializable, store).map_err(StoreError::custom)
     }
 }

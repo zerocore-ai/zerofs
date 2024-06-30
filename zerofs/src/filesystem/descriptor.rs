@@ -9,6 +9,17 @@ use super::{DescriptorFlags, Dir, File};
 /// A descriptor for an entity.
 #[derive(Debug)]
 pub struct Descriptor<E> {
+    // ///
+    // root: Arc<Mutex<Dir>>,
+
+    // ///
+    // spine: Vec<DirCidLink<S>>,
+
+    // ///
+    // tail: E,
+
+    // ///
+    // flags: DescriptorFlags,
     /// The entity.
     pub(crate) entity: E,
 

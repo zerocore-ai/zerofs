@@ -32,7 +32,7 @@ where
 #[derive(Debug)]
 pub struct EntityDescriptor<S>(Descriptor<Entity<S>>)
 where
-    S: IpldStore;
+    S: IpldStore + Send + Sync;
 
 //--------------------------------------------------------------------------------------------------
 // Methods
@@ -40,7 +40,7 @@ where
 
 impl<S> Entity<S>
 where
-    S: IpldStore,
+    S: IpldStore + Send + Sync,
 {
     /// Returns true if the entity is a file.
     pub fn is_file(&self) -> bool {
@@ -82,7 +82,7 @@ where
 
 impl<S> EntityDescriptor<S>
 where
-    S: IpldStore,
+    S: IpldStore + Send + Sync,
 {
     /// Returns the flags for the entity.
     pub fn flags(&self) -> &DescriptorFlags {
@@ -129,7 +129,7 @@ where
 
 impl<S> Storable<S> for Entity<S>
 where
-    S: IpldStore,
+    S: IpldStore + Send + Sync,
 {
     async fn store(&self) -> StoreResult<Cid> {
         match self {
@@ -147,7 +147,7 @@ where
 
 impl<S> Debug for Entity<S>
 where
-    S: IpldStore,
+    S: IpldStore + Send + Sync,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

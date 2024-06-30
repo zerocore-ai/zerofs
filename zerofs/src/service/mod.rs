@@ -5,7 +5,7 @@ mod error;
 mod peer;
 mod request;
 mod service;
-mod state_machine;
+mod statemachine;
 mod user;
 
 //--------------------------------------------------------------------------------------------------
@@ -17,5 +17,5 @@ pub use error::*;
 pub use peer::*;
 pub use request::*;
 pub use service::*;
-pub use state_machine::*;
+pub use statemachine::*;
 pub use user::*;

@@ -180,9 +180,11 @@ impl<S> IpldReferences for File<S>
 where
     S: IpldStore,
 {
-    fn references<'a>(&'a self) -> Box<dyn Iterator<Item = &'a Cid> + 'a> {
-        // TODO: Fix when content is added to the file.
-        Box::new(std::iter::empty())
+    fn references<'a>(&'a self) -> Box<dyn Iterator<Item = &'a Cid> + Send + 'a> {
+        match self.inner.content.as_ref() {
+            Some(cid) => Box::new(std::iter::once(cid)),
+            None => Box::new(std::iter::empty()),
+        }
     }
 }
 
@@ -205,14 +207,14 @@ where
 
 impl<S> Storable<S> for File<S>
 where
-    S: IpldStore,
+    S: IpldStore + Send + Sync,
 {
     async fn store(&self) -> StoreResult<Cid> {
-        self.inner.store.put(self).await
+        self.inner.store.put_node(self).await
     }
 
     async fn load(cid: &Cid, store: S) -> StoreResult<Self> {
-        let serializable = store.get(cid).await?;
+        let serializable = store.get_node(cid).await?;
         File::try_from_serializable(serializable, store).map_err(StoreError::custom)
     }
 }

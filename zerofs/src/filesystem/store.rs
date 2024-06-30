@@ -1,9 +1,6 @@
-use std::{collections::HashSet, path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 
-use bytes::Bytes;
-use serde::Serialize;
 use tokio::sync::RwLock;
-use zeroutils_store::{ipld::cid::Cid, Codec, IpldReferences, IpldStore, StoreResult};
 
 //--------------------------------------------------------------------------------------------------
 // Constants
@@ -49,38 +46,4 @@ impl DiskStore {
 // Trait Implementations
 //--------------------------------------------------------------------------------------------------
 
-impl IpldStore for DiskStore {
-    async fn put<T>(&self, _data: &T) -> StoreResult<Cid>
-    where
-        T: Serialize + IpldReferences,
-    {
-        todo!()
-    }
-
-    async fn put_bytes(&self, _bytes: impl Into<Bytes>) -> StoreResult<Cid> {
-        todo!()
-    }
-
-    async fn get<D>(&self, _cid: impl Into<Cid>) -> StoreResult<D>
-    where
-        D: serde::de::DeserializeOwned,
-    {
-        todo!()
-    }
-
-    async fn get_bytes(&self, _cid: impl Into<Cid>) -> StoreResult<Bytes> {
-        todo!()
-    }
-
-    async fn references(&self, _cid: impl Into<Cid>) -> StoreResult<HashSet<Cid>> {
-        todo!()
-    }
-
-    fn supported_codecs(&self) -> HashSet<Codec> {
-        todo!()
-    }
-
-    fn block_size_hint(&self) -> (usize, Option<usize>) {
-        todo!()
-    }
-}
+// TODO: Implement `IpldStore` for `DiskStore`.
