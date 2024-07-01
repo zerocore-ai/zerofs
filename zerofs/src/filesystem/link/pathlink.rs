@@ -1,4 +1,5 @@
 use async_once_cell::OnceCell;
+use zeroutils_store::IpldStore;
 
 use crate::filesystem::{Entity, Path};
 
@@ -22,6 +23,22 @@ impl<T> PathLink<T> {
     /// Gets the path of the link.
     pub fn path(&self) -> &Path {
         &self.identifier
+    }
+}
+
+impl<S> EntityPathLink<S>
+where
+    S: IpldStore,
+{
+    /// Change the store used to persist the path link.
+    pub fn use_store<T>(self, _: &T) -> EntityPathLink<T>
+    where
+        T: IpldStore,
+    {
+        EntityPathLink {
+            identifier: self.identifier,
+            cached: OnceCell::new(),
+        }
     }
 }
 

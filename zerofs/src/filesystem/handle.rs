@@ -1,19 +1,21 @@
 use std::ops::Deref;
 
+use zeroutils_store::IpldStore;
+
 use super::{DescriptorFlags, Dir, File};
 
 //--------------------------------------------------------------------------------------------------
 // Types
 //--------------------------------------------------------------------------------------------------
 
-/// A descriptor for an entity.
+/// A handle representing an open entity.
 #[derive(Debug)]
-pub struct Descriptor<E> {
+pub struct Handle<E> {
     // ///
-    // root: Arc<Mutex<Dir>>,
+    // root: RootDir<S>,
 
     // ///
-    // spine: Vec<DirCidLink<S>>,
+    // path: Vec<DirCidLink<S>>,
 
     // ///
     // tail: E,
@@ -27,20 +29,20 @@ pub struct Descriptor<E> {
     pub(crate) flags: DescriptorFlags,
 }
 
-/// A descriptor for a file.
-pub type FileDescriptor<S> = Descriptor<File<S>>;
+/// A handle for an open file.
+pub type FileHandle<S> = Handle<File<S>>;
 
-/// A descriptor for a directory.
-pub type DirDescriptor<S> = Descriptor<Dir<S>>;
+/// A handle for an open directory.
+pub type DirHandle<S> = Handle<Dir<S>>;
 
 //--------------------------------------------------------------------------------------------------
 // Methods
 //--------------------------------------------------------------------------------------------------
 
-impl<E> Descriptor<E> {
-    /// Creates a new descriptor.
+impl<E> Handle<E> {
+    /// Creates a new handle.
     pub fn new(entity: E, flags: DescriptorFlags) -> Self {
-        Descriptor { entity, flags }
+        Handle { entity, flags }
     }
 
     /// Returns the flags for the descriptor.
@@ -49,11 +51,31 @@ impl<E> Descriptor<E> {
     }
 }
 
+impl<S> FileHandle<S>
+where
+    S: IpldStore,
+{
+    /// Creates a new file handle from a file and descriptor flags.
+    pub fn from(entity: File<S>, flags: DescriptorFlags) -> FileHandle<S> {
+        FileHandle { entity, flags }
+    }
+}
+
+impl<S> DirHandle<S>
+where
+    S: IpldStore,
+{
+    /// Creates a new directory handle from a directory and descriptor flags.
+    pub fn from(entity: Dir<S>, flags: DescriptorFlags) -> DirHandle<S> {
+        DirHandle { entity, flags }
+    }
+}
+
 //--------------------------------------------------------------------------------------------------
 // Trait Implementations
 //--------------------------------------------------------------------------------------------------
 
-impl<E> Deref for Descriptor<E> {
+impl<E> Deref for Handle<E> {
     type Target = E;
 
     fn deref(&self) -> &Self::Target {

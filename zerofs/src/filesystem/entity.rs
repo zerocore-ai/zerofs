@@ -4,8 +4,7 @@ use std::fmt::Debug;
 use zeroutils_store::{ipld::cid::Cid, IpldStore, Storable, StoreResult};
 
 use super::{
-    Descriptor, DescriptorFlags, Dir, DirDescriptor, File, FileDescriptor, FsError, FsResult,
-    Metadata, Symlink,
+    DescriptorFlags, Dir, DirHandle, File, FileHandle, FsError, FsResult, Handle, Metadata, Symlink,
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -28,9 +27,9 @@ where
     Symlink(Symlink<S>),
 }
 
-/// A descriptor for a file system entity.
+/// A handle for an open file system entity.
 #[derive(Debug)]
-pub struct EntityDescriptor<S>(Descriptor<Entity<S>>)
+pub struct EntityHandle<S>(Handle<Entity<S>>)
 where
     S: IpldStore + Send + Sync;
 
@@ -78,9 +77,21 @@ where
             Entity::Symlink(symlink) => symlink.metadata(),
         }
     }
+
+    /// Change the store used to persist the entity.
+    pub fn use_store<T>(self, store: T) -> Entity<T>
+    where
+        T: IpldStore,
+    {
+        match self {
+            Entity::File(file) => Entity::File(file.use_store(store)),
+            Entity::Dir(dir) => Entity::Dir(dir.use_store(store)),
+            Entity::Symlink(symlink) => Entity::Symlink(symlink.use_store(store)),
+        }
+    }
 }
 
-impl<S> EntityDescriptor<S>
+impl<S> EntityHandle<S>
 where
     S: IpldStore + Send + Sync,
 {
@@ -91,35 +102,32 @@ where
 
     /// Creates a new descriptor from an entity.
     pub fn from_entity(entity: Entity<S>, flags: DescriptorFlags) -> Self {
-        EntityDescriptor(Descriptor::new(entity, flags))
+        EntityHandle(Handle::new(entity, flags))
     }
 
     /// Creates a new descriptor for a file.
     pub fn from_file(file: File<S>, flags: DescriptorFlags) -> Self {
-        EntityDescriptor(Descriptor::new(Entity::File(file), flags))
+        EntityHandle(Handle::new(Entity::File(file), flags))
     }
 
     /// Creates a new descriptor for a directory.
     pub fn from_dir(dir: Dir<S>, flags: DescriptorFlags) -> Self {
-        EntityDescriptor(Descriptor::new(Entity::Dir(dir), flags))
+        EntityHandle(Handle::new(Entity::Dir(dir), flags))
     }
 
     /// Tries to convert the descriptor to a file descriptor.
-    pub fn as_file(self) -> FsResult<FileDescriptor<S>> {
+    pub fn as_file(self) -> FsResult<FileHandle<S>> {
         let flags = *self.0.flags();
         self.0
             .entity
             .as_file()
-            .map(|file| FileDescriptor::new(file, flags))
+            .map(|file| FileHandle::new(file, flags))
     }
 
     /// Tries to convert the descriptor to a directory descriptor.
-    pub fn as_dir(self) -> FsResult<DirDescriptor<S>> {
+    pub fn as_dir(self) -> FsResult<DirHandle<S>> {
         let flags = *self.0.flags();
-        self.0
-            .entity
-            .as_dir()
-            .map(|dir| DirDescriptor::new(dir, flags))
+        self.0.entity.as_dir().map(|dir| DirHandle::new(dir, flags))
     }
 }
 

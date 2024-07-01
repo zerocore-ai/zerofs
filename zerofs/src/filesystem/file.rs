@@ -12,8 +12,7 @@ use zeroutils_store::{
 use zeroutils_ucan::UcanAuth;
 
 use super::{
-    DescriptorFlags, EntityType, FileDescriptor, FileInputStream, FileOutputStream, FsError,
-    FsResult, Metadata,
+    EntityType, FileHandle, FileInputStream, FileOutputStream, FsError, FsResult, Metadata,
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -29,6 +28,7 @@ where
     inner: Arc<FileInner<S>>,
 }
 
+#[derive(Clone)]
 struct FileInner<S>
 where
     S: IpldStore,
@@ -76,22 +76,6 @@ where
         }
     }
 
-    /// Creates a new file descriptor.
-    pub fn new_descriptor(store: S, descriptor_flags: DescriptorFlags) -> FileDescriptor<S> {
-        FileDescriptor {
-            entity: File::new(store),
-            flags: descriptor_flags,
-        }
-    }
-
-    /// Creates a new file descriptor for the file.
-    pub fn into_descriptor(self, flags: DescriptorFlags) -> FileDescriptor<S> {
-        FileDescriptor {
-            entity: self,
-            flags,
-        }
-    }
-
     /// Returns the metadata for the directory.
     pub fn metadata(&self) -> &Metadata {
         &self.inner.metadata
@@ -100,6 +84,25 @@ where
     /// Returns `true` if the file is empty.
     pub fn is_empty(&self) -> bool {
         self.inner.content.is_none()
+    }
+
+    /// Change the store used to persist the file.
+    pub fn use_store<T>(self, store: T) -> File<T>
+    where
+        T: IpldStore,
+    {
+        let inner = match Arc::try_unwrap(self.inner) {
+            Ok(inner) => inner,
+            Err(arc) => (*arc).clone(),
+        };
+
+        File {
+            inner: Arc::new(FileInner {
+                metadata: inner.metadata,
+                content: inner.content,
+                store,
+            }),
+        }
     }
 
     /// Deserializes to a `Dir` using an arbitrary deserializer and store.
@@ -128,10 +131,10 @@ where
 }
 
 //--------------------------------------------------------------------------------------------------
-// Methods: FileDescriptor
+// Methods: FileHandle
 //--------------------------------------------------------------------------------------------------
 
-impl<S> FileDescriptor<S>
+impl<S> FileHandle<S>
 where
     S: IpldStore,
 {

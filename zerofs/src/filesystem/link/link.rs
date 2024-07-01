@@ -5,6 +5,7 @@ use async_once_cell::OnceCell;
 //--------------------------------------------------------------------------------------------------
 
 /// A link representing an association between an identifier and some lazily loaded value.
+#[derive(Debug)]
 pub struct Link<L, T> {
     /// The identifier of the link.
     pub(crate) identifier: L,
@@ -37,5 +38,17 @@ where
 {
     fn eq(&self, other: &Self) -> bool {
         self.identifier == other.identifier
+    }
+}
+
+impl<L, T> Clone for Link<L, T>
+where
+    L: Clone,
+{
+    fn clone(&self) -> Self {
+        Link {
+            identifier: self.identifier.clone(),
+            cached: OnceCell::new(),
+        }
     }
 }

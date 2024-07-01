@@ -3,7 +3,7 @@ use bytes::Bytes;
 use zeroutils_store::IpldStore;
 use zeroutils_wasi::io::{InputStream, StreamError, Subscribe};
 
-use super::FileDescriptor;
+use super::FileHandle;
 
 //--------------------------------------------------------------------------------------------------
 // Types
@@ -14,7 +14,7 @@ pub struct FileInputStream<S>
 where
     S: IpldStore,
 {
-    _file: FileDescriptor<S>,
+    _file: FileHandle<S>,
     _cursor: u64,
 }
 
@@ -23,7 +23,7 @@ pub struct FileOutputStream<S>
 where
     S: IpldStore,
 {
-    _file: FileDescriptor<S>,
+    _file: FileHandle<S>,
     _cursor: u64,
 }
 
@@ -35,8 +35,8 @@ impl<S> FileInputStream<S>
 where
     S: IpldStore,
 {
-    /// Creates a new file input stream from a file descriptor and an offset.
-    pub fn new(file: FileDescriptor<S>, offset: u64) -> Self {
+    /// Creates a new file input stream from a file handle and an offset.
+    pub fn new(file: FileHandle<S>, offset: u64) -> Self {
         Self {
             _file: file,
             _cursor: offset,

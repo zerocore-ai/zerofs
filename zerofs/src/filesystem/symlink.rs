@@ -11,7 +11,7 @@ use zeroutils_store::{
     ipld::cid::Cid, IpldReferences, IpldStore, Storable, StoreError, StoreResult,
 };
 
-use super::{EntityType, FsError, FsResult, Metadata, Path, PathLink};
+use super::{EntityPathLink, EntityType, FsError, FsResult, Metadata, Path, PathLink};
 
 //--------------------------------------------------------------------------------------------------
 // Types
@@ -26,6 +26,7 @@ where
     inner: Arc<SymlinkInner<S>>,
 }
 
+#[derive(Clone)]
 struct SymlinkInner<S>
 where
     S: IpldStore,
@@ -37,7 +38,7 @@ where
     pub(crate) store: S,
 
     /// The link to the target of the symlink.
-    pub(crate) link: PathLink<S>, // TODO: Might change this back to CidLink
+    pub(crate) link: EntityPathLink<S>, // TODO: Might change this back to EntityCidLink
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -81,6 +82,25 @@ where
     /// Gets the target path of the symlink.
     pub fn path(&self) -> &Path {
         self.inner.link.path()
+    }
+
+    /// Change the store used to persist the symlink.
+    pub fn use_store<T>(self, store: T) -> Symlink<T>
+    where
+        T: IpldStore,
+    {
+        let inner = match Arc::try_unwrap(self.inner) {
+            Ok(inner) => inner,
+            Err(arc) => (*arc).clone(),
+        };
+
+        Symlink {
+            inner: Arc::new(SymlinkInner {
+                metadata: inner.metadata,
+                link: inner.link.use_store(&store),
+                store,
+            }),
+        }
     }
 
     /// Deserializes to a `Dir` using an arbitrary deserializer and store.

@@ -1,7 +1,7 @@
 use async_once_cell::OnceCell;
 use zeroutils_store::{ipld::cid::Cid, IpldStore, Storable};
 
-use crate::filesystem::{Dir, Entity, FsResult};
+use crate::filesystem::{Entity, FsResult};
 
 use super::{Link, Resolvable};
 
@@ -11,9 +11,6 @@ use super::{Link, Resolvable};
 
 /// A link representing an association between [`Cid`] and some lazily loaded value.
 pub type CidLink<T> = Link<Cid, T>;
-
-/// A link representing an association between [`Cid`] and a lazily loaded [`Dir`].
-pub type DirCidLink<S> = CidLink<Dir<S>>;
 
 /// A link representing an association between [`Cid`] and a lazily loaded [`Entity`].
 pub type EntityCidLink<S> = CidLink<Entity<S>>;
@@ -29,23 +26,25 @@ impl<T> CidLink<T> {
     }
 }
 
+impl<S> EntityCidLink<S>
+where
+    S: IpldStore,
+{
+    /// Change the store used to persist the CID link.
+    pub fn use_store<T>(self, _: &T) -> EntityCidLink<T>
+    where
+        T: IpldStore,
+    {
+        EntityCidLink {
+            identifier: self.identifier,
+            cached: OnceCell::new(),
+        }
+    }
+}
+
 //--------------------------------------------------------------------------------------------------
 // Trait Implementations
 //--------------------------------------------------------------------------------------------------
-
-impl<'a, S> Resolvable<'a, S> for DirCidLink<S>
-where
-    S: IpldStore + Send + Sync + 'a,
-{
-    type Target = Dir<S>;
-
-    async fn resolve(&'a self, store: S) -> FsResult<&'a Self::Target> {
-        self.cached
-            .get_or_try_init(Dir::load(&self.identifier, store))
-            .await
-            .map_err(Into::into)
-    }
-}
 
 impl<'a, S> Resolvable<'a, S> for EntityCidLink<S>
 where

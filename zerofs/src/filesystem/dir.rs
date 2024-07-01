@@ -2,7 +2,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     convert::TryInto,
     fmt::{self, Debug},
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 
 use serde::{
@@ -16,9 +16,9 @@ use zeroutils_store::{
 use zeroutils_ucan::UcanAuth;
 
 use super::{
-    DescriptorFlags, DirDescriptor, Entity, EntityCidLink, EntityDescriptor, EntityType, File,
-    FsError, FsResult, Link, Metadata, OpenFlags, Path, PathFlags, PathSegment, PermissionError,
-    Resolvable,
+    DescriptorFlags, DirHandle, Entity, EntityCidLink, EntityHandle, EntityType, File, FsError,
+    FsResult, Link, MemoryBufferStore, Metadata, OpenFlags, Path, PathFlags, PathSegment,
+    PermissionError, Resolvable,
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -27,7 +27,7 @@ use super::{
 
 /// Represents a directory in the `zerofs` file system.
 ///
-/// Since zerofs is a capability-based file system, a `UCAN` needs to provided that lets the file
+/// Since zerofs is a capability-based file system, a [`Ucan`][UcanAuth] needs to be provided that lets the file
 /// system grant access to the directory's contents.
 #[derive(Clone)]
 pub struct Dir<S>
@@ -37,6 +37,7 @@ where
     inner: Arc<DirInner<S>>,
 }
 
+#[derive(Clone)]
 struct DirInner<S>
 where
     S: IpldStore,
@@ -49,6 +50,14 @@ where
 
     /// The entries in the directory.
     pub(crate) entries: HashMap<String, EntityCidLink<S>>,
+}
+
+/// Used to represent the root directory of the file system.
+pub struct RootDir<S>
+where
+    S: IpldStore,
+{
+    inner: Arc<Mutex<Dir<S>>>,
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -83,6 +92,25 @@ pub(crate) struct DirDeserializeSeed<S> {
 // Methods: Dir
 //--------------------------------------------------------------------------------------------------
 
+impl<S> RootDir<S>
+where
+    S: IpldStore + Send + Sync,
+{
+    /// Creates a new directory with the given store.
+    pub fn new(store: S) -> Self {
+        Self {
+            inner: Arc::new(Mutex::new(Dir::new(store))),
+        }
+    }
+
+    /// Forks the root directory by creating a clone of it with a buffer store.
+    pub fn fork(&self) -> Dir<MemoryBufferStore<S>> {
+        let dir = self.inner.lock().unwrap().clone();
+        let buffer_store = MemoryBufferStore::new(dir.inner.store.clone());
+        dir.use_store(buffer_store)
+    }
+}
+
 impl<S> Dir<S>
 where
     S: IpldStore + Send + Sync,
@@ -98,33 +126,19 @@ where
         }
     }
 
-    /// Creates a new directory descriptor.
-    pub fn new_descriptor(store: S, descriptor_flags: DescriptorFlags) -> DirDescriptor<S> {
-        DirDescriptor {
-            entity: Dir::new(store),
-            flags: descriptor_flags,
-        }
-    }
-
-    /// Creates a new directory descriptor for the directory.
-    pub fn into_descriptor(self, descriptor_flags: DescriptorFlags) -> DirDescriptor<S> {
-        DirDescriptor {
-            entity: self,
-            flags: descriptor_flags,
-        }
-    }
-
     /// Returns an iterator over the entries in the directory.
     pub fn entries(&self) -> impl Iterator<Item = (&String, &EntityCidLink<S>)> {
         self.inner.entries.iter()
     }
 
     /// Adds the given entries to the directory.
-    pub fn add_entries(&self, _entries: impl IntoIterator<Item = (String, Cid)>) {
-        todo!() // TODO: Implement this method.
-                // self.inner
-                //     .entries
-                //     .extend(entries.into_iter().map(|(k, v)| (k, CidLink::from(v))));
+    pub fn add_entries(&mut self, entries: impl IntoIterator<Item = (String, Cid)>) {
+        let inner = Arc::make_mut(&mut self.inner);
+        inner.entries.extend(
+            entries
+                .into_iter()
+                .map(|(k, v)| (k, EntityCidLink::from(v))),
+        );
     }
 
     /// Returns the metadata for the directory.
@@ -137,6 +151,30 @@ where
         self.inner.entries.is_empty()
     }
 
+    /// Change the store used to persist the directory.
+    pub fn use_store<T>(self, store: T) -> Dir<T>
+    where
+        T: IpldStore,
+    {
+        let inner = match Arc::try_unwrap(self.inner) {
+            Ok(inner) => inner,
+            Err(arc) => (*arc).clone(),
+        };
+
+        Dir {
+            inner: Arc::new(DirInner {
+                metadata: inner.metadata,
+                entries: inner
+                    .entries
+                    .into_iter()
+                    .map(|(k, v)| (k, v.use_store(&store)))
+                    .collect(),
+                store,
+            }),
+        }
+    }
+
+    // TODO: Refactor!
     /// Gets the entity with the given name from the directory.
     async fn get_entity(&self, path_segment: &PathSegment) -> FsResult<Option<&Entity<S>>> {
         if !path_segment.is_named() {
@@ -154,6 +192,7 @@ where
         Ok(None)
     }
 
+    // TODO: Refactor!
     /// Gets the leaf directory at the given path.
     async fn get_leaf_dir(&self, path: &Path) -> FsResult<FindResult<S>> {
         let canonical_path = path.canonicalize()?;
@@ -180,11 +219,12 @@ where
         Ok(FindResult::Found(dir.clone()))
     }
 
+    // TODO: Remove?
     /// Gets the leaf directory at the given path, creating it if it does not exist.
     async fn get_or_create_leaf_dir(&self, path: &Path) -> FsResult<Dir<S>> {
         match self.get_leaf_dir(path).await? {
             FindResult::Incomplete {
-                dir: start_head,
+                dir: mut start_head,
                 depth,
             } => {
                 let mut end_head = start_head.clone();
@@ -197,7 +237,7 @@ where
                     .take(path.len() - depth)
                     .enumerate()
                 {
-                    let dir = Dir::new(start_head.inner.store.clone());
+                    let mut dir = Dir::new(start_head.inner.store.clone());
                     if let Some(cid) = child {
                         dir.add_entries([(segment.to_string(), cid)]);
                     }
@@ -258,7 +298,7 @@ where
 // Methods: DirDescriptor
 //--------------------------------------------------------------------------------------------------
 
-impl<S> DirDescriptor<S>
+impl<S> DirHandle<S>
 where
     S: IpldStore + Send + Sync,
 {
@@ -270,7 +310,7 @@ where
         open_flags: OpenFlags,
         descriptor_flags: DescriptorFlags,
         _ucan: UcanAuth<'a, T, K>,
-    ) -> FsResult<EntityDescriptor<S>>
+    ) -> FsResult<EntityHandle<S>>
     where
         T: IpldStore,
         K: GetPublicKey,
@@ -319,7 +359,7 @@ where
         let init = Path::try_from_iter(init.iter().cloned())?;
 
         // Get the leaf directory at the given path, creating it if it does not exist.
-        let dir = if open_flags.contains(OpenFlags::CREATE) {
+        let mut dir = if open_flags.contains(OpenFlags::CREATE) {
             self.entity.get_or_create_leaf_dir(&init).await?
         } else {
             match self.entity.get_leaf_dir(&init).await? {
@@ -343,7 +383,7 @@ where
                 }
 
                 match entity {
-                    Entity::Dir(d) => EntityDescriptor::from_dir(d.clone(), descriptor_flags),
+                    Entity::Dir(d) => EntityHandle::from_dir(d.clone(), descriptor_flags),
                     Entity::File(f) => {
                         if open_flags.contains(OpenFlags::DIRECTORY) {
                             return Err(FsError::OpenFlagsDirectoryButEntityNotADir(
@@ -351,7 +391,7 @@ where
                             ));
                         }
 
-                        EntityDescriptor::from_file(f.clone(), descriptor_flags)
+                        EntityHandle::from_file(f.clone(), descriptor_flags)
                     }
                     _ => return Err(FsError::NotAFileOrDir(Some(path))),
                 }
@@ -365,7 +405,7 @@ where
                 let cid = file.store().await?;
                 dir.add_entries([(last.to_string(), cid)]);
 
-                EntityDescriptor::from_file(file, descriptor_flags)
+                EntityHandle::from_file(file, descriptor_flags)
             }
         };
 
@@ -528,7 +568,7 @@ mod tests {
     async fn test_dir_add_entries() -> anyhow::Result<()> {
         let store = MemoryStore::default();
 
-        let dir = Dir::new(store);
+        let mut dir = Dir::new(store);
         dir.add_entries([
             (
                 "file1".to_string(),
@@ -557,7 +597,7 @@ mod tests {
     async fn test_dir_stores_loads() -> anyhow::Result<()> {
         let store = MemoryStore::default();
 
-        let dir = Dir::new(store.clone());
+        let mut dir = Dir::new(store.clone());
         dir.add_entries([(
             "file1".to_string(),
             Cid::from_str("bafkreidgvpkjawlxz6sffxzwgooowe5yt7i6wsyg236mfoks77nywkptdq")?,
@@ -577,12 +617,12 @@ mod tests {
         let iss_key = Ed25519KeyPair::generate(&mut rand::thread_rng())?;
         let auth = fixture::mock_ucan_auth(&iss_key, PlaceholderStore)?;
 
-        let dd = Dir::new_descriptor(
-            store.clone(),
+        let dir_handle = DirHandle::from(
+            Dir::new(store.clone()),
             DescriptorFlags::READ | DescriptorFlags::MUTATE_DIR,
         );
 
-        let ed = dd
+        let entity_handle = dir_handle
             .open_at(
                 "public/file",
                 PathFlags::SYMLINK_FOLLOW,
@@ -593,7 +633,7 @@ mod tests {
             .await?;
 
         store.print().await;
-        println!("\nentity: {:#?}", ed); // TODO: Remove
+        println!("\nentity: {:#?}", entity_handle); // TODO: Remove
 
         Ok(())
     }
