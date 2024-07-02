@@ -1,10 +1,11 @@
 use core::fmt;
-use std::fmt::Debug;
+use std::{fmt::Debug, ops::Deref};
 
 use zeroutils_store::{ipld::cid::Cid, IpldStore, Storable, StoreResult};
 
 use super::{
-    DescriptorFlags, Dir, DirHandle, File, FileHandle, FsError, FsResult, Handle, Metadata, Symlink,
+    DescriptorFlags, Dir, DirHandle, File, FileHandle, FsError, FsResult, Handle, Metadata,
+    PathSegment, RootDir, Symlink,
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -29,9 +30,10 @@ where
 
 /// A handle for an open file system entity.
 #[derive(Debug)]
-pub struct EntityHandle<S>(Handle<Entity<S>>)
+pub struct EntityHandle<S, T>(Handle<Entity<T>, S, T>)
 where
-    S: IpldStore + Send + Sync;
+    S: IpldStore,
+    T: IpldStore;
 
 //--------------------------------------------------------------------------------------------------
 // Methods
@@ -39,7 +41,7 @@ where
 
 impl<S> Entity<S>
 where
-    S: IpldStore + Send + Sync,
+    S: IpldStore,
 {
     /// Returns true if the entity is a file.
     pub fn is_file(&self) -> bool {
@@ -91,43 +93,113 @@ where
     }
 }
 
-impl<S> EntityHandle<S>
+impl<S, T> EntityHandle<S, T>
 where
-    S: IpldStore + Send + Sync,
+    S: IpldStore,
+    T: IpldStore,
 {
     /// Returns the flags for the entity.
     pub fn flags(&self) -> &DescriptorFlags {
         self.0.flags()
     }
 
-    /// Creates a new descriptor from an entity.
-    pub fn from_entity(entity: Entity<S>, flags: DescriptorFlags) -> Self {
-        EntityHandle(Handle::new(entity, flags))
+    /// Creates a new handle from an entity, its name, descriptor flags, root directory, and path.
+    ///
+    /// ## Arguments
+    ///
+    /// * `entity` - The entity being referenced by the handle.
+    /// * `name` - The name of the entity in its parent directory entries. `None` if the handle has
+    ///   no parent directory.
+    /// * `flags` - The descriptor flags for working with the entity.
+    /// * `root` - The root directory of the file system.
+    /// * `path` - An iterator yielding `(Dir<T>, PathSegment)` tuples representing the directories
+    ///   along the path to the entity.
+    pub fn from_entity(
+        entity: Entity<T>,
+        name: Option<PathSegment>,
+        flags: DescriptorFlags,
+        root: RootDir<S>,
+        path: impl IntoIterator<Item = (Dir<T>, PathSegment)>,
+    ) -> Self {
+        EntityHandle(Handle::from(entity, name, flags, root, path))
     }
 
-    /// Creates a new descriptor for a file.
-    pub fn from_file(file: File<S>, flags: DescriptorFlags) -> Self {
-        EntityHandle(Handle::new(Entity::File(file), flags))
+    /// Creates a new handle from a file, its name, descriptor flags, root directory, and path.
+    ///
+    /// ## Arguments
+    ///
+    /// * `file` - The file being referenced by the handle.
+    /// * `name` - The name of the entity in its parent directory entries. `None` if the handle has
+    ///   no parent directory.
+    /// * `flags` - The descriptor flags for working with the file.
+    /// * `root` - The root directory of the file system.
+    /// * `path` - An iterator yielding `(Dir<T>, PathSegment)` tuples representing the directories
+    ///   along the path to the file.
+    pub fn from_file(
+        file: File<T>,
+        name: Option<PathSegment>,
+        flags: DescriptorFlags,
+        root: RootDir<S>,
+        pathdirs: impl IntoIterator<Item = (Dir<T>, PathSegment)>,
+    ) -> Self {
+        EntityHandle(Handle::from(
+            Entity::File(file),
+            name,
+            flags,
+            root,
+            pathdirs,
+        ))
     }
 
-    /// Creates a new descriptor for a directory.
-    pub fn from_dir(dir: Dir<S>, flags: DescriptorFlags) -> Self {
-        EntityHandle(Handle::new(Entity::Dir(dir), flags))
+    /// Creates a new handle from a directory, its name, descriptor flags, root directory, and path.
+    ///
+    /// ## Arguments
+    ///
+    /// * `dir` - The directory being referenced by the handle.
+    /// * `name` - The name of the directory in its parent directory entries. `None` if the handle has
+    ///   no parent directory.
+    /// * `flags` - The descriptor flags for working with the directory.
+    /// * `root` - The root directory of the file system.
+    /// * `path` - An iterator yielding `(Dir<T>, PathSegment)` tuples representing the directories
+    ///   along the path to the directory.
+    pub fn from_dir(
+        dir: Dir<T>,
+        name: Option<PathSegment>,
+        flags: DescriptorFlags,
+        root: RootDir<S>,
+        path: impl IntoIterator<Item = (Dir<T>, PathSegment)>,
+    ) -> Self {
+        EntityHandle(Handle::from(Entity::Dir(dir), name, flags, root, path))
     }
 
-    /// Tries to convert the descriptor to a file descriptor.
-    pub fn as_file(self) -> FsResult<FileHandle<S>> {
-        let flags = *self.0.flags();
-        self.0
-            .entity
+    /// Tries to convert the handle to a file handle.
+    pub fn as_file(self) -> FsResult<FileHandle<S, T>> {
+        let EntityHandle(Handle {
+            entity,
+            name,
+            flags,
+            root,
+            pathdirs,
+        }) = self;
+
+        entity
             .as_file()
-            .map(|file| FileHandle::new(file, flags))
+            .map(|file| FileHandle::from(file, name, flags, root, pathdirs))
     }
 
-    /// Tries to convert the descriptor to a directory descriptor.
-    pub fn as_dir(self) -> FsResult<DirHandle<S>> {
-        let flags = *self.0.flags();
-        self.0.entity.as_dir().map(|dir| DirHandle::new(dir, flags))
+    /// Tries to convert the handle to a directory handle.
+    pub fn as_dir(self) -> FsResult<DirHandle<S, T>> {
+        let EntityHandle(Handle {
+            entity,
+            name,
+            flags,
+            root,
+            pathdirs,
+        }) = self;
+
+        entity
+            .as_dir()
+            .map(|dir| DirHandle::from(dir, name, flags, root, pathdirs))
     }
 }
 
@@ -155,7 +227,7 @@ where
 
 impl<S> Debug for Entity<S>
 where
-    S: IpldStore + Send + Sync,
+    S: IpldStore,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -163,5 +235,17 @@ where
             Entity::Dir(dir) => f.debug_tuple("Dir").field(dir).finish(),
             Entity::Symlink(symlink) => f.debug_tuple("Symlink").field(symlink).finish(),
         }
+    }
+}
+
+impl<S, T> Deref for EntityHandle<S, T>
+where
+    S: IpldStore,
+    T: IpldStore,
+{
+    type Target = Handle<Entity<T>, S, T>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }

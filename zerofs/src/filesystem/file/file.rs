@@ -5,21 +5,21 @@ use serde::{
     de::{self, DeserializeSeed},
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use zeroutils_key::GetPublicKey;
 use zeroutils_store::{
     ipld::cid::Cid, IpldReferences, IpldStore, Storable, StoreError, StoreResult,
 };
-use zeroutils_ucan::UcanAuth;
 
-use super::{
-    EntityType, FileHandle, FileInputStream, FileOutputStream, FsError, FsResult, Metadata,
-};
+use crate::filesystem::{EntityType, FsError, FsResult, Metadata};
 
 //--------------------------------------------------------------------------------------------------
 // Types
 //--------------------------------------------------------------------------------------------------
 
-/// A file in the file system.
+/// Represents a file node in the `zerofs` file system.
+///
+/// ## Important
+/// Entities in `zerofs` are designed to be immutable and clone-on-write meaning writes create
+/// forks of the entity.
 #[derive(Clone)]
 pub struct File<S>
 where
@@ -86,6 +86,12 @@ where
         self.inner.content.is_none()
     }
 
+    /// Truncates the file to zero bytes.
+    pub fn truncate(&mut self) {
+        let inner = Arc::make_mut(&mut self.inner);
+        inner.content = None;
+    }
+
     /// Change the store used to persist the file.
     pub fn use_store<T>(self, store: T) -> File<T>
     where
@@ -127,41 +133,6 @@ where
                 store,
             }),
         })
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-// Methods: FileHandle
-//--------------------------------------------------------------------------------------------------
-
-impl<S> FileHandle<S>
-where
-    S: IpldStore,
-{
-    /// Returns a stream to read from the file.
-    pub fn read_via_stream<T, K>(
-        &self,
-        _offset: u64,
-        _ucan: UcanAuth<T, K>,
-    ) -> FsResult<FileInputStream<S>>
-    where
-        T: IpldStore,
-        K: GetPublicKey,
-    {
-        todo!()
-    }
-
-    /// Returns a stream to write to the file.
-    pub fn write_via_stream<T, K>(
-        &self,
-        _offset: u64,
-        _ucan: UcanAuth<T, K>,
-    ) -> FsResult<FileOutputStream<S>>
-    where
-        T: IpldStore,
-        K: GetPublicKey,
-    {
-        todo!()
     }
 }
 

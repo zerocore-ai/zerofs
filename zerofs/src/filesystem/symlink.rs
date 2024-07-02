@@ -17,7 +17,13 @@ use super::{EntityPathLink, EntityType, FsError, FsResult, Metadata, Path, PathL
 // Types
 //--------------------------------------------------------------------------------------------------
 
-/// A symlink to a file or directory.
+/// Represents a [`symbolic link`][symlink] to a file or directory in the `zerofs` file system.
+///
+/// ## Important
+/// Entities in `zerofs` are designed to be immutable and clone-on-write meaning writes create
+/// forks of the entity.
+///
+/// [symlink]: https://en.wikipedia.org/wiki/Symbolic_link
 #[derive(Clone)]
 pub struct Symlink<S>
 where

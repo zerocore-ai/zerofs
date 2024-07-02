@@ -16,7 +16,7 @@ use zeroutils_store::{
 /// store for writes and a user-provided store for back-up reads.
 ///
 /// This store is useful for creating a temporary buffer for writes
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct MemoryBufferStore<S>
 where
     S: IpldStore,
@@ -29,11 +29,12 @@ where
 //--------------------------------------------------------------------------------------------------
 
 /// An [`IpldStore`][zeroutils_store::IpldStore] that stores its blocks on disk.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct DiskStore {
     _inner: Arc<RwLock<DiskStoreInner>>,
 }
 
+#[derive(Debug)]
 struct DiskStoreInner {
     /// The base directory where the blocks are stored.
     ///

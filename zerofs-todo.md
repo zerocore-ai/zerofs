@@ -1,5 +1,5 @@
 - [ ] Implement certain open flags and path flags
-  - [ ] OpenFlags::TRUNCATE
+  - [x] OpenFlags::TRUNCATE
   - [ ] PathFlags::SYMLINK_FOLLOW
 
 - [ ] Capability-based security

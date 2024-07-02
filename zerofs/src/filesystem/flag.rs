@@ -28,6 +28,7 @@ bitflags! {
     /// Flags to determine how to open a path.
     ///
     /// This corresponds to `path-flags` in the WASI preview 2.
+    // TODO: Implement SYMLINK_FOLLOW.
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
     pub struct PathFlags: u8 {
         /// Follow symlinks.

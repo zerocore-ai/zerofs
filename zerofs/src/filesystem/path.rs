@@ -1,6 +1,9 @@
 use std::{
+    cmp::Ordering,
     convert::{TryFrom, TryInto},
     fmt::Display,
+    hash::{Hash, Hasher},
+    slice::SliceIndex,
     str::FromStr,
 };
 
@@ -21,25 +24,38 @@ pub const PATH_SEPARATOR: char = '/';
 // Types
 //--------------------------------------------------------------------------------------------------
 
-/// A path in the file system.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// A `Path` represents a sequence of path segments that can reference a directory or file in the
+/// file system. For instance, the path `/home/user/file.txt` consists of the segments:
+/// `home`, `user`, and `file.txt`.
+///
+/// ## Important
+/// Paths are case-insensitive, which affects their equality and hash implementations.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Path {
-    /// The segments of the path.
-    pub segments: Vec<PathSegment>,
+    /// The segments composing the path.
+    segments: Vec<PathSegment>,
 }
 
-/// A segment of a path.
+/// A slice of a path.
+pub struct PathSlice<'a> {
+    /// The segments composing the path.
+    segments: &'a [PathSegment],
+}
+
+/// A `PathSegment` represents a single part of a path. For example, the path `/home/user/file.txt`
+/// includes the segments: `home`, `user`, and `file.txt`.
+///
+/// ## Important
+/// Path segments are case-insensitive, which affects their equality and hash implementations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PathSegment {
-    /// A path segment representing the current directory.
-    /// This is represented by a single dot `.`.
+    /// Represents the current directory, denoted by a single dot `.`.
     CurrentDir,
 
-    /// A path segment representing the parent directory.
-    /// This is represented by a double dot `..`.
+    /// Represents the parent directory, denoted by a double dot `..`.
     ParentDir,
 
-    /// A path segment representing a named directory or file.
+    /// Represents a named directory or file.
     Named(String),
 }
 
@@ -120,15 +136,84 @@ impl Path {
         self.segments.is_empty()
     }
 
+    /// Returns the first segment of the path.
+    pub fn first(&self) -> Option<&PathSegment> {
+        self.segments.first()
+    }
+
+    /// Returns the last segment of the path.
+    pub fn last(&self) -> Option<&PathSegment> {
+        self.segments.last()
+    }
+
     /// Returns an iterator over the path segments.
     pub fn iter(&self) -> impl Iterator<Item = &PathSegment> {
         self.segments.iter()
     }
 
+    /// Borrows the path as a `PathSlice`.
+    ///
+    /// This method creates a borrowed view of the `Path`, allowing you to work with the segments
+    /// of the path without taking ownership. This can be useful when you need a read-only
+    /// view of the path.
+    pub fn as_slice(&self) -> PathSlice {
+        PathSlice {
+            segments: &self.segments,
+        }
+    }
+
+    /// Slices the path.
+    ///
+    /// This method creates a borrowed view of a sub-range of the `Path` segments. The `slice` parameter
+    /// can be any type that implements the `SliceIndex` trait for slices of `PathSegment`. This provides
+    /// flexibility in specifying the range of segments to include in the slice.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the range is out of bounds.
+    pub fn slice(
+        &self,
+        slice: impl SliceIndex<[PathSegment], Output = [PathSegment]>,
+    ) -> PathSlice {
+        PathSlice {
+            segments: &self.segments[slice],
+        }
+    }
+}
+
+impl<'a> PathSlice<'a> {
+    /// Returns the number of segments in the path.
+    pub fn len(&self) -> usize {
+        self.segments.len()
+    }
+
+    /// Returns whether the path is empty.
+    pub fn is_empty(&self) -> bool {
+        self.segments.is_empty()
+    }
+
+    /// Returns the first segment of the path.
+    pub fn first(&self) -> Option<&PathSegment> {
+        self.segments.first()
+    }
+
     /// Returns the last segment of the path.
-    pub(crate) fn split_last(&self) -> (&[PathSegment], &PathSegment) {
-        let (last, init) = self.segments.split_last().unwrap();
-        (init, last)
+    pub fn last(&self) -> Option<&PathSegment> {
+        self.segments.last()
+    }
+
+    /// Returns an iterator over the path segments.
+    pub fn iter(&self) -> impl Iterator<Item = &PathSegment> {
+        self.segments.iter()
+    }
+
+    /// Converts a borrowed `PathSlice` into an owned `Path`.
+    ///
+    /// This method creates a new `Path` instance by cloning the segments of the `PathSlice`.
+    pub fn to_owned(&self) -> Path {
+        Path {
+            segments: self.segments.to_owned(),
+        }
     }
 }
 
@@ -157,6 +242,15 @@ impl PathSegment {
     /// Returns whether the path segment is a named segment.
     pub fn is_named(&self) -> bool {
         matches!(self, PathSegment::Named(_))
+    }
+
+    /// Returns the path segment as a string.
+    pub fn as_str(&self) -> &str {
+        match self {
+            PathSegment::Named(segment) => segment.as_str(),
+            PathSegment::CurrentDir => ".",
+            PathSegment::ParentDir => "..",
+        }
     }
 }
 
@@ -215,8 +309,20 @@ impl Display for Path {
 }
 
 //--------------------------------------------------------------------------------------------------
+// Trait Implementations: PathSlice
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
 // Trait Implementations: PathSegment
 //--------------------------------------------------------------------------------------------------
+
+impl FromStr for PathSegment {
+    type Err = FsError;
+
+    fn from_str(segment: &str) -> Result<Self, Self::Err> {
+        PathSegment::try_from(segment)
+    }
+}
 
 impl TryFrom<String> for PathSegment {
     type Error = FsError;
@@ -262,6 +368,26 @@ impl PartialEq for PathSegment {
 
 impl Eq for PathSegment {}
 
+impl PartialOrd for PathSegment {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for PathSegment {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.canonicalize()
+            .as_str()
+            .cmp(other.canonicalize().as_str())
+    }
+}
+
+impl Hash for PathSegment {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.canonicalize().as_str().hash(state)
+    }
+}
+
 //--------------------------------------------------------------------------------------------------
 // Constants
 //--------------------------------------------------------------------------------------------------
@@ -276,6 +402,8 @@ lazy_static! {
 
 #[cfg(test)]
 mod tests {
+    use std::hash::DefaultHasher;
+
     use super::*;
 
     #[test]
@@ -347,6 +475,35 @@ mod tests {
         assert_eq!(base_path, Path::from_str("/0/the/quick/brown/fox")?);
         assert_eq!(base_path, Path::from_str("/0/THE/QUICK/BROWN/FOX")?);
         assert_eq!(base_path, Path::from_str("/0/The/Quick/Brown/Fox")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_path_ordering() -> anyhow::Result<()> {
+        let a = Path::from_str("/a/b/c")?;
+        let b = Path::from_str("/a/b/d")?;
+        assert_eq!(a < b, true);
+
+        let a = Path::from_str("/a/b/c")?;
+        let b = Path::from_str("/a/b/c/d")?;
+        assert_eq!(a < b, true);
+
+        let a = Path::from_str("/A/b/c")?;
+        let b = Path::from_str("/a/b/c")?;
+        assert_eq!(a == b, true);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_path_hash() -> anyhow::Result<()> {
+        let a = Path::from_str("/a/b/c")?;
+        let b = Path::from_str("/A/b/C")?;
+        assert_eq!(
+            a.hash(&mut DefaultHasher::new()),
+            b.hash(&mut DefaultHasher::new())
+        );
 
         Ok(())
     }

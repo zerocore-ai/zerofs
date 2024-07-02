@@ -99,6 +99,10 @@ pub enum FsError {
     /// Invalid open flags combination.
     #[error("Invalid open flags combination: path: {0}, open_flags: {1:?}")]
     InvalidOpenFlagsCombination(Path, OpenFlags),
+
+    /// Symlink not supported yet.
+    #[error("Symlink not supported yet: path: {0}")]
+    SymLinkNotSupportedYet(Path),
 }
 
 /// Permission error.

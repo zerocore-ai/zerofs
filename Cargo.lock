@@ -4078,6 +4078,7 @@ dependencies = [
  "serde_with",
  "shared_memory",
  "structstruck",
+ "test-log",
  "thiserror",
  "tokio",
  "toml 0.8.12",

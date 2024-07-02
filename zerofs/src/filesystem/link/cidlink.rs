@@ -52,6 +52,7 @@ where
 {
     type Target = Entity<S>;
 
+    /// Resolves the [`EntityCidLink`] to an [`Entity`].
     async fn resolve(&'a self, store: S) -> FsResult<&'a Self::Target> {
         self.cached
             .get_or_try_init(Entity::load(&self.identifier, store))

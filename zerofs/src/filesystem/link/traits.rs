@@ -16,6 +16,6 @@ where
     /// The target type that the resolvable type can be resolved to.
     type Target: 'a;
 
-    /// Resolves the resolvable type to the target.
+    /// Resolves to a target type
     fn resolve(&'a self, store: S) -> impl Future<Output = FsResult<&'a Self::Target>>;
 }
