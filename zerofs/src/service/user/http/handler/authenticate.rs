@@ -5,19 +5,21 @@ use axum::http::{HeaderMap, StatusCode};
 //--------------------------------------------------------------------------------------------------
 
 const AUTHN_USER_TOKEN: &str = "x-authn-user-token";
-const AUTHN_USER_TOKEN_PROOF_MAP: &str = "x-authn-user-token-proof-map";
+const AUTHN_USER_TOKEN_MAP: &str = "x-authn-user-token-map";
 
 //--------------------------------------------------------------------------------------------------
 // Functions
 //--------------------------------------------------------------------------------------------------
 
-/// This handler authenticates a user verifying that the user is allowed to access resources of the server.
-/// This is determined by checking that the expected user [`UCAN`][ucan] is issued to the server.
+/// This handler authenticates a user verifying that the user is allowed to access resources of the
+/// server. This is determined by checking that the expected user [`UCAN`][ucan] is issued to the
+/// server.
 ///
-/// The server validates the UCAN and return a signed session token to the user as an http-only cookie.
+/// The server validates the UCAN and return a signed session token to the user as an http-only
+/// cookie.
 ///
-/// In addition to that, the server will also return a CSRF token to the user as a cookie which will be expected
-/// in a double submit pattern from the user in subsequent requests.
+/// In addition to that, the server will also return a CSRF token to the user as a cookie which will
+/// be expected in a double submit pattern from the user in subsequent requests.
 ///
 /// [ucan]: https://github.com/ucan-wg/spec
 pub(crate) async fn authenticate(headers: HeaderMap) -> Result<String, StatusCode> {
@@ -27,8 +29,8 @@ pub(crate) async fn authenticate(headers: HeaderMap) -> Result<String, StatusCod
         .to_str()
         .map_err(|_| StatusCode::BAD_REQUEST)?; // TODO: Should be a 400 error with message indicating invalid token
 
-    let _token_proof_map = headers
-        .get(AUTHN_USER_TOKEN_PROOF_MAP)
+    let _user_token_map = headers
+        .get(AUTHN_USER_TOKEN_MAP)
         .ok_or(StatusCode::UNAUTHORIZED)? // TODO: Should be a 401 error with message indicating missing token
         .to_str()
         .map_err(|_| StatusCode::BAD_REQUEST)?; // TODO: Should be a 400 error with message indicating invalid token
@@ -47,6 +49,9 @@ pub(crate) async fn authenticate(headers: HeaderMap) -> Result<String, StatusCod
     //      .capabilities(capabilities![])
     //      .sign(key_pair)
     //      .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?; // TODO: Should be a 500 error with message indicating internal server error
+
+    // // TODO: Return a session token and CSRF token to the user
+    // // TODO: Return success or failure to the user
 
     todo!()
 }

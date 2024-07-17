@@ -1,5 +1,6 @@
 //! The file system module.
 
+mod capabilities;
 mod dir;
 mod entity;
 mod error;
@@ -18,6 +19,7 @@ mod symlink;
 // Exports
 //--------------------------------------------------------------------------------------------------
 
+pub use capabilities::*;
 pub use dir::*;
 pub use entity::*;
 pub use error::*;

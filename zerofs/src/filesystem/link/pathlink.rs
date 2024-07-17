@@ -21,7 +21,7 @@ pub type EntityPathLink<S> = PathLink<Entity<S>>;
 
 impl<T> PathLink<T> {
     /// Gets the path of the link.
-    pub fn path(&self) -> &Path {
+    pub fn get_path(&self) -> &Path {
         &self.identifier
     }
 }

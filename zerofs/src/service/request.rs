@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use zeroutils_store::ipld::cid::Cid;
 
-use crate::filesystem::{DescriptorFlags, OpenFlags, Path, PathFlags};
+use crate::filesystem::{DescriptorFlags, OpenFlags, Path};
 
 //--------------------------------------------------------------------------------------------------
 // Types: Identifiers
@@ -50,12 +50,33 @@ pub struct OpenAt {
     #[serde_as(as = "serde_with::DisplayFromStr")]
     path: Path,
 
-    /// Flags that determine how the path is resolved and how the entity is opened.
-    path_flags: PathFlags, // TODO: Should serialize to u8
-
     /// Flags that determine how the entity is opened.
     open_flags: OpenFlags, // TODO: Should serialize to u8
 
     /// Flags that deal with capabilities of the entity.
     descriptor_flags: DescriptorFlags, // TODO: Should serialize to u8
+}
+
+//--------------------------------------------------------------------------------------------------
+// Tests
+//--------------------------------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_entity_operation_serde() -> anyhow::Result<()> {
+        // TODO: Test that the entity operation is serialized and deserialized correctly.
+        let _entity_operation = EntityOperation {
+            identifier: None,
+            operation: EntityOperationKind::OpenAt(OpenAt {
+                path: "public/pictures/profile.png".parse().unwrap(),
+                open_flags: OpenFlags::EXCLUSIVE,
+                descriptor_flags: DescriptorFlags::READ,
+            }),
+        };
+
+        todo!()
+    }
 }

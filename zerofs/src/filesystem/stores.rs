@@ -92,7 +92,10 @@ where
         self.inner.put_node(data).await
     }
 
-    async fn put_bytes(&self, reader: impl AsyncRead + Send) -> StoreResult<Cid> {
+    async fn put_bytes<'a>(
+        &'a self,
+        reader: impl AsyncRead + Send + Sync + 'a,
+    ) -> StoreResult<Cid> {
         self.inner.put_bytes(reader).await
     }
 
@@ -110,7 +113,7 @@ where
     async fn get_bytes<'a>(
         &'a self,
         cid: &'a Cid,
-    ) -> StoreResult<Pin<Box<dyn AsyncRead + Send + 'a>>> {
+    ) -> StoreResult<Pin<Box<dyn AsyncRead + Send + Sync + 'a>>> {
         self.inner.get_bytes(cid).await
     }
 
@@ -123,17 +126,17 @@ where
         self.inner.has(cid).await
     }
 
-    fn supported_codecs(&self) -> HashSet<Codec> {
-        self.inner.supported_codecs()
+    fn get_supported_codecs(&self) -> HashSet<Codec> {
+        self.inner.get_supported_codecs()
     }
 
     #[inline]
-    fn node_block_max_size(&self) -> Option<u64> {
-        self.inner.node_block_max_size()
+    fn get_node_block_max_size(&self) -> Option<u64> {
+        self.inner.get_node_block_max_size()
     }
 
     #[inline]
-    fn raw_block_max_size(&self) -> Option<u64> {
-        self.inner.raw_block_max_size()
+    fn get_raw_block_max_size(&self) -> Option<u64> {
+        self.inner.get_raw_block_max_size()
     }
 }

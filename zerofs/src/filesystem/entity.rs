@@ -4,8 +4,7 @@ use std::{fmt::Debug, ops::Deref};
 use zeroutils_store::{ipld::cid::Cid, IpldStore, Storable, StoreResult};
 
 use super::{
-    DescriptorFlags, Dir, DirHandle, File, FileHandle, FsError, FsResult, Handle, Metadata,
-    PathSegment, RootDir, Symlink,
+    DescriptorFlags, Dir, File, FsError, FsResult, Handle, Metadata, PathSegment, RootDir, Symlink,
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -72,11 +71,11 @@ where
     }
 
     /// Returns the metadata for the directory.
-    pub fn metadata(&self) -> &Metadata {
+    pub fn get_metadata(&self) -> &Metadata {
         match self {
-            Entity::File(file) => file.metadata(),
-            Entity::Dir(dir) => dir.metadata(),
-            Entity::Symlink(symlink) => symlink.metadata(),
+            Entity::File(file) => file.get_metadata(),
+            Entity::Dir(dir) => dir.get_metadata(),
+            Entity::Symlink(symlink) => symlink.get_metadata(),
         }
     }
 
@@ -170,36 +169,6 @@ where
         path: impl IntoIterator<Item = (Dir<T>, PathSegment)>,
     ) -> Self {
         EntityHandle(Handle::from(Entity::Dir(dir), name, flags, root, path))
-    }
-
-    /// Tries to convert the handle to a file handle.
-    pub fn as_file(self) -> FsResult<FileHandle<S, T>> {
-        let EntityHandle(Handle {
-            entity,
-            name,
-            flags,
-            root,
-            pathdirs,
-        }) = self;
-
-        entity
-            .as_file()
-            .map(|file| FileHandle::from(file, name, flags, root, pathdirs))
-    }
-
-    /// Tries to convert the handle to a directory handle.
-    pub fn as_dir(self) -> FsResult<DirHandle<S, T>> {
-        let EntityHandle(Handle {
-            entity,
-            name,
-            flags,
-            root,
-            pathdirs,
-        }) = self;
-
-        entity
-            .as_dir()
-            .map(|dir| DirHandle::from(dir, name, flags, root, pathdirs))
     }
 }
 

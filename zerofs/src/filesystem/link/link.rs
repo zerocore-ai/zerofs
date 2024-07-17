@@ -23,7 +23,7 @@ pub type Cached<T> = OnceCell<T>;
 
 impl<L, T> Link<L, T> {
     /// Gets the cached value.
-    pub fn cached(&self) -> Option<&T> {
+    pub fn get_cached(&self) -> Option<&T> {
         self.cached.get()
     }
 }

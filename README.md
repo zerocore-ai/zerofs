@@ -28,11 +28,7 @@
 
 ### Key Features
 
-This project shares the same [core philosophies][key-features] as zerocore, and in addition to that, it is also:
-
-#### Versioned
-
-zerofs features robust data versioning where each modification creates a new immutable version of the data, linked through hashes. This design allows for full historical traceability and simple rollback capabilities.
+This project shares the same [core philosophies][key-features] as zerocore.
 
 </br>
 

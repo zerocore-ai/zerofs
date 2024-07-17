@@ -9,7 +9,7 @@ use zeroutils_store::{
     ipld::cid::Cid, IpldReferences, IpldStore, Storable, StoreError, StoreResult,
 };
 
-use crate::filesystem::{EntityType, FsError, FsResult, Metadata};
+use crate::filesystem::{EntityType, FsError, FsResult, Handle, Metadata};
 
 //--------------------------------------------------------------------------------------------------
 // Types
@@ -18,6 +18,7 @@ use crate::filesystem::{EntityType, FsError, FsResult, Metadata};
 /// Represents a file node in the `zerofs` file system.
 ///
 /// ## Important
+///
 /// Entities in `zerofs` are designed to be immutable and clone-on-write meaning writes create
 /// forks of the entity.
 #[derive(Clone)]
@@ -42,6 +43,9 @@ where
     /// The store used to persist blocks in the file.
     pub(crate) store: S,
 }
+
+/// A handle for an open file.
+pub type FileHandle<S, T> = Handle<File<T>, S, T>;
 
 //--------------------------------------------------------------------------------------------------
 // Types: Serializable
@@ -76,9 +80,19 @@ where
         }
     }
 
+    /// Returns the content of the file.
+    pub fn get_content(&self) -> Option<&Cid> {
+        self.inner.content.as_ref()
+    }
+
     /// Returns the metadata for the directory.
-    pub fn metadata(&self) -> &Metadata {
+    pub fn get_metadata(&self) -> &Metadata {
         &self.inner.metadata
+    }
+
+    /// Returns the store used to persist the file.
+    pub fn get_store(&self) -> &S {
+        &self.inner.store
     }
 
     /// Returns `true` if the file is empty.
@@ -147,7 +161,7 @@ impl<S> FileDeserializeSeed<S> {
 }
 
 //--------------------------------------------------------------------------------------------------
-// Trait Implementations
+// Trait Implementations: File
 //--------------------------------------------------------------------------------------------------
 
 impl<S> IpldReferences for File<S>
@@ -200,9 +214,14 @@ where
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("File")
             .field("metadata", &self.inner.metadata)
+            .field("content", &self.inner.content)
             .finish()
     }
 }
+
+//--------------------------------------------------------------------------------------------------
+// Trait Implementations: FileDeserializeSeed
+//--------------------------------------------------------------------------------------------------
 
 impl<'de, S> DeserializeSeed<'de> for FileDeserializeSeed<S>
 where

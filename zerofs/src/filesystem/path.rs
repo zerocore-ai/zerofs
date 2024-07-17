@@ -29,6 +29,7 @@ pub const PATH_SEPARATOR: char = '/';
 /// `home`, `user`, and `file.txt`.
 ///
 /// ## Important
+///
 /// Paths are case-insensitive, which affects their equality and hash implementations.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Path {
@@ -46,6 +47,7 @@ pub struct PathSlice<'a> {
 /// includes the segments: `home`, `user`, and `file.txt`.
 ///
 /// ## Important
+///
 /// Path segments are case-insensitive, which affects their equality and hash implementations.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PathSegment {
@@ -80,7 +82,7 @@ impl Path {
     }
 
     /// Returns the segments of the path.
-    pub fn segments(&self) -> &[PathSegment] {
+    pub fn get_segments(&self) -> &[PathSegment] {
         &self.segments
     }
 

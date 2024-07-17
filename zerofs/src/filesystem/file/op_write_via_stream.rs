@@ -2,10 +2,10 @@ use zeroutils_key::GetPublicKey;
 use zeroutils_store::IpldStore;
 use zeroutils_ucan::UcanAuth;
 
-use crate::filesystem::{FileHandle, FileInputStream, FileOutputStream, FsResult};
+use crate::filesystem::{DescriptorFlags, FileHandle, FileOutputStream, FsResult};
 
 //--------------------------------------------------------------------------------------------------
-// Methods: FileHandle
+// Methods
 //--------------------------------------------------------------------------------------------------
 
 impl<S, T> FileHandle<S, T>
@@ -23,6 +23,16 @@ where
         U: IpldStore,
         K: GetPublicKey,
     {
+        if !self.flags().contains(DescriptorFlags::WRITE) {
+            todo!()
+        }
+
+        // TODO: Check if user has capabilities to write to the file.
+
         todo!()
     }
 }
+
+//--------------------------------------------------------------------------------------------------
+// Tests
+//--------------------------------------------------------------------------------------------------

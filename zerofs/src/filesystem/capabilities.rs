@@ -1,9 +1,10 @@
-mod dir;
-#[cfg(feature = "wasi_api")]
-mod op_open_at;
+use zeroutils_ucan::Capabilities;
 
 //--------------------------------------------------------------------------------------------------
-// Exports
+// Types
 //--------------------------------------------------------------------------------------------------
 
-pub use dir::*;
+/// TODO: Add capabilities for the filesystem
+pub fn capabilities() -> Capabilities<'static> {
+    todo!()
+}

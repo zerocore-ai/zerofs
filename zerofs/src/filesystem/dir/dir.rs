@@ -14,7 +14,7 @@ use zeroutils_store::{
 };
 
 use crate::filesystem::{
-    DescriptorFlags, DirHandle, Entity, EntityCidLink, EntityType, File, FsError, FsResult, Link,
+    DescriptorFlags, Entity, EntityCidLink, EntityType, File, FsError, FsResult, Handle, Link,
     MemoryBufferStore, Metadata, Path, PathDirs, PathSegment, Resolvable,
 };
 
@@ -28,6 +28,7 @@ use crate::filesystem::{
 /// lets the file system grant access to the directory's contents.
 ///
 /// ## Important
+///
 /// Entities in `zerofs` are designed to be immutable and clone-on-write meaning writes create
 /// forks of the entity.
 #[derive(Clone)]
@@ -58,6 +59,8 @@ where
 /// Following the clone-on-write design of the file system, there is sometimes a need for a mutable
 /// reference to the root directory of the file system. This is why the root directory is implemented
 /// as an `Arc` and `Mutex`.
+///
+// TODO: Should probably consider actor-style model with channels.
 #[derive(Debug, Clone)]
 pub struct RootDir<S>
 where
@@ -65,6 +68,9 @@ where
 {
     inner: Arc<Mutex<Dir<S>>>,
 }
+
+/// A handle for an open directory.
+pub type DirHandle<S, T> = Handle<Dir<T>, S, T>;
 
 //--------------------------------------------------------------------------------------------------
 // Types: *
@@ -165,11 +171,6 @@ where
         }
     }
 
-    /// Returns an iterator over the entries in the directory.
-    pub fn entries(&self) -> impl Iterator<Item = (&PathSegment, &EntityCidLink<S>)> {
-        self.inner.entries.iter()
-    }
-
     /// Adds a [`Cid`] (to an entity) and its associated name in the directory's entries.
     pub fn put(
         &mut self,
@@ -188,8 +189,18 @@ where
     }
 
     /// Returns the metadata for the directory.
-    pub fn metadata(&self) -> &Metadata {
+    pub fn get_metadata(&self) -> &Metadata {
         &self.inner.metadata
+    }
+
+    /// Returns an iterator over the entries in the directory.
+    pub fn get_entries(&self) -> impl Iterator<Item = (&PathSegment, &EntityCidLink<S>)> {
+        self.inner.entries.iter()
+    }
+
+    /// Returns the store used to persist the file.
+    pub fn get_store(&self) -> &S {
+        &self.inner.store
     }
 
     /// Returns `true` if the directory is empty.
@@ -380,7 +391,7 @@ where
     S: IpldStore + Send + Sync,
 {
     fn references<'a>(&'a self) -> Box<dyn Iterator<Item = &'a Cid> + Send + 'a> {
-        Box::new(self.entries().map(|(_, v)| v.cid()))
+        Box::new(self.get_entries().map(|(_, v)| v.get_cid()))
     }
 }
 
@@ -407,7 +418,10 @@ where
             .field("metadata", &self.inner.metadata)
             .field(
                 "entries",
-                &self.entries().map(|(_, v)| v.cid()).collect::<Vec<_>>(),
+                &self
+                    .get_entries()
+                    .map(|(_, v)| v.get_cid())
+                    .collect::<Vec<_>>(),
             )
             .finish()
     }
@@ -424,8 +438,8 @@ where
         let serializable = DirSerializable {
             metadata: self.inner.metadata.clone(),
             entries: self
-                .entries()
-                .map(|(k, v)| (k.to_string(), *v.cid()))
+                .get_entries()
+                .map(|(k, v)| (k.to_string(), *v.get_cid()))
                 .collect(),
         };
 
@@ -536,11 +550,11 @@ mod tests {
 
         assert_eq!(dir.inner.entries.len(), 2);
         assert_eq!(
-            dir.get(&"file1".parse()?).unwrap().cid(),
+            dir.get(&"file1".parse()?).unwrap().get_cid(),
             &"bafkreidgvpkjawlxz6sffxzwgooowe5yt7i6wsyg236mfoks77nywkptdq".parse()?
         );
         assert_eq!(
-            dir.get(&"file2".parse()?).unwrap().cid(),
+            dir.get(&"file2".parse()?).unwrap().get_cid(),
             &"bafkreidgvpkjawlxz6sffxzwgooowe5yt7i6wsyg236mfoks77nywkptdq".parse()?
         );
 

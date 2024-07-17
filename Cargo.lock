@@ -4069,6 +4069,7 @@ dependencies = [
  "bitflags 2.5.0",
  "bytes",
  "chrono",
+ "futures",
  "home",
  "lazy_static",
  "procspawn",
@@ -4246,6 +4247,7 @@ dependencies = [
 name = "zeroutils-store"
 version = "0.1.0"
 dependencies = [
+ "aliasable",
  "anyhow",
  "async-stream",
  "bytes",

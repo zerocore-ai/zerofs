@@ -20,6 +20,7 @@ use super::{EntityPathLink, EntityType, FsError, FsResult, Metadata, Path, PathL
 /// Represents a [`symbolic link`][symlink] to a file or directory in the `zerofs` file system.
 ///
 /// ## Important
+///
 /// Entities in `zerofs` are designed to be immutable and clone-on-write meaning writes create
 /// forks of the entity.
 ///
@@ -81,13 +82,13 @@ where
     }
 
     /// Returns the metadata for the directory.
-    pub fn metadata(&self) -> &Metadata {
+    pub fn get_metadata(&self) -> &Metadata {
         &self.inner.metadata
     }
 
     /// Gets the target path of the symlink.
-    pub fn path(&self) -> &Path {
-        self.inner.link.path()
+    pub fn get_path(&self) -> &Path {
+        self.inner.link.get_path()
     }
 
     /// Change the store used to persist the symlink.
@@ -166,7 +167,7 @@ where
     {
         let serializable = SymlinkSerializable {
             metadata: self.inner.metadata.clone(),
-            link: self.inner.link.path().clone(),
+            link: self.inner.link.get_path().clone(),
         };
 
         serializable.serialize(serializer)

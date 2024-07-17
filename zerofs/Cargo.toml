@@ -37,13 +37,15 @@ chrono = { workspace = true, features = ["serde"] }
 async-once-cell = "0.5.3"
 aliasable = "0.1.3"
 test-log.workspace = true
+futures.workspace = true
 
 [[bin]]
 name = "fsserver"
 path = "bin/fsserver.rs"
 
 [features]
-wasi = []
+default = ["wasi_api"]
+wasi_api = []
 
 [dev-dependencies]
 procspawn = "1.0.0"

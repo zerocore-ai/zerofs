@@ -34,11 +34,11 @@ impl FsHttpServer {
     /// Starts the HTTP server.
     pub async fn start(&self) -> ServiceResult<()> {
         let router = router::router(Arc::clone(&self.config));
-        let listener = TcpListener::bind(self.config.network.user_address()).await?;
+        let listener = TcpListener::bind(self.config.network.get_user_address()).await?;
 
         tracing::info!(
             "HTTP server started at {}",
-            self.config.network.user_address()
+            self.config.network.get_user_address()
         );
 
         axum::serve(listener, router).await?;

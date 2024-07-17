@@ -13,6 +13,8 @@ use super::{Dir, PathSegment};
 //--------------------------------------------------------------------------------------------------
 
 /// A collection of directories and their corresponding names in their respective parent directories.
+/// For example, if the path is `/a/b/c`, the pathdirs will hold the directories representing `a`, `b`,
+/// and `c` along with those names.
 #[derive(Clone)]
 pub struct PathDirs<S>
 where

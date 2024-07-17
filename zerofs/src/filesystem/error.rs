@@ -111,10 +111,6 @@ pub enum PermissionError {
     /// Child descriptor has higher permission than parent.
     #[error("Child descriptor has higher permission than parent: path: {0}, parent(descriptor_flags: {1:?}) child (descriptor_flags: {2:?}, open_flags: {3:?})")]
     ChildPermissionEscalation(Path, DescriptorFlags, DescriptorFlags, OpenFlags),
-
-    /// Not allowed to read a directory without the `READ` flag.
-    #[error("Not allowed to read a directory without the `READ` flag")]
-    NotAllowedToReadDir,
 }
 
 /// An error that can represent any error.

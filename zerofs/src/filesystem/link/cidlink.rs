@@ -21,7 +21,7 @@ pub type EntityCidLink<S> = CidLink<Entity<S>>;
 
 impl<T> CidLink<T> {
     /// Gets the CID of the link.
-    pub fn cid(&self) -> &Cid {
+    pub fn get_cid(&self) -> &Cid {
         &self.identifier
     }
 }

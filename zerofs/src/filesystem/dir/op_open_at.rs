@@ -41,13 +41,8 @@ where
             return Err(FsError::NeedAtLeastReadFlag(path, descriptor_flags));
         }
 
-        // Check if there is permission to read directory.
-        if !self.flags.contains(DescriptorFlags::READ) {
-            return Err(PermissionError::NotAllowedToReadDir.into());
-        }
-
         // Check for descriptor flag permission escalation.
-        if !self.flags.contains(DescriptorFlags::MUTATE_DIR)
+        if !self.flags().contains(DescriptorFlags::MUTATE_DIR)
             && (descriptor_flags.contains(DescriptorFlags::MUTATE_DIR)
                 || descriptor_flags.contains(DescriptorFlags::WRITE)
                 || open_flags.contains(OpenFlags::CREATE)
@@ -55,7 +50,7 @@ where
         {
             return Err(PermissionError::ChildPermissionEscalation(
                 path,
-                self.flags,
+                self.flags().clone(),
                 descriptor_flags,
                 open_flags,
             )
@@ -102,7 +97,7 @@ where
         // Convert the entity to an entity handle.
         let handle = match entity {
             Entity::Dir(dir) => {
-                EntityHandle::from_dir(dir, name, descriptor_flags, self.root.clone(), pathdirs)
+                EntityHandle::from_dir(dir, name, descriptor_flags, self.root().clone(), pathdirs)
             }
             Entity::File(mut file) => {
                 if open_flags.contains(OpenFlags::DIRECTORY) {
@@ -115,7 +110,7 @@ where
                     file.truncate();
                 }
 
-                EntityHandle::from_file(file, name, descriptor_flags, self.root.clone(), pathdirs)
+                EntityHandle::from_file(file, name, descriptor_flags, self.root().clone(), pathdirs)
             }
 
             _ => return Err(FsError::NotAFileOrDir(Some(path))),
@@ -192,25 +187,6 @@ mod tests {
             result,
             Err(FsError::PermissionError(
                 PermissionError::ChildPermissionEscalation(..)
-            ))
-        ));
-
-        // Opening a directory with no READ flag should fail.
-
-        let dir_handle = root_dir.make_handle(DescriptorFlags::MUTATE_DIR);
-        let result = dir_handle
-            .open_at(
-                "public/file",
-                OpenFlags::CREATE | OpenFlags::EXCLUSIVE,
-                DescriptorFlags::READ | DescriptorFlags::WRITE,
-                fixture::mock_ucan_auth(&iss_key, PlaceholderStore)?,
-            )
-            .await;
-
-        assert!(matches!(
-            result,
-            Err(FsError::PermissionError(
-                PermissionError::NotAllowedToReadDir
             ))
         ));
 
